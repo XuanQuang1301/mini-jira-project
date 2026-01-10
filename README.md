@@ -50,22 +50,6 @@ Hỗ trợ đầy đủ CRUD: Thêm, Sửa, Xóa bình luận của chính mình
 5. Tính toàn vẹn dữ liệu (Data Integrity)
 Sử dụng Cascade Delete: Khi xóa một Task, toàn bộ bình luận và lịch sử liên quan sẽ tự động bị xóa sạch, tránh dữ liệu rác.
 
-📂 Cấu trúc dự án
-Plaintext
-
-mini-jira-project/
-├── server/                 # Backend API
-│   ├── src/
-│   │   ├── db/schema/      # Định nghĩa bảng Database
-│   │   ├── services/       # Xử lý logic nghiệp vụ
-│   │   ├── routes/         # Định nghĩa các đầu API
-│   │   └── middlewares/    # Kiểm tra Token
-├── client/                 # Giao diện người dùng
-│   ├── src/
-│   │   ├── components/     # Các thành phần giao diện
-│   │   ├── pages/          # Trang Login, Dashboard, Board
-│   │   └── services/       # Gọi API từ Backend
-└── README.md
 🚀 Hướng dẫn cài đặt
 Bước 1: Cấu hình Backend
 Di chuyển vào thư mục server: cd server.
@@ -98,3 +82,4 @@ Login & Auth: Chặn truy cập khi không có Bearer Token.
 Transaction: Thử nghiệm tạo lỗi khi update Task để kiểm tra tính năng Rollback dữ liệu.
 
 Cascade Delete: Xóa Task ID 1 và xác nhận bảng comments, task_history trống trơn.
+
