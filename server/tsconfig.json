@@ -1,0 +1,14 @@
+{
+  "compilerOptions": {
+    "target": "ES2020",                                  /* Phiên bản JS đầu ra */
+    "module": "CommonJS",                                /* Hệ thống module cho Node.js */
+    "rootDir": "./src",                                  /* Nơi chứa file .ts gốc */
+    "outDir": "./dist",                                  /* Nơi chứa file .js sau khi build */
+    "esModuleInterop": true,                             /* Hỗ trợ import các thư viện cũ */
+    "forceConsistentCasingInFileNames": true,            /* Tránh lỗi tên file viết hoa/thường trên Linux/Docker */
+    "strict": true,                                      /* Bật chế độ kiểm tra lỗi nghiêm ngặt */
+    "skipLibCheck": true                                 /* Bỏ qua kiểm tra lỗi trong các thư viện node_modules */
+  },
+  "include": ["src/**/*"],                               /* Chỉ build các file trong thư mục src */
+  "exclude": ["node_modules", "**/*.test.ts"]            /* Loại bỏ thư viện và file test khi build */
+}

@@ -40,3 +40,7 @@ export const deleteProjectService = async (projectId: number) => {
         return deletedProject;
     });
 };
+
+export const getAllProjectsService = async (userId: number) => {
+  return await db.select().from(projects).where(eq(projects.ownerId, userId));
+};
