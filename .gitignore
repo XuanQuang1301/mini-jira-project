@@ -1,9 +1,10 @@
-.node_modules
+.gitignore
+node_modules/
 .env
 .drizzle
 docker-compose.yml
 .DS_Store
-dist
+dist/
 .vscode
 npm-debug.log*
 yarn-debug.log*
