@@ -26,7 +26,7 @@ Dự án này là một ứng dụng Fullstack mô phỏng các tính năng cố
 | **Frontend** | **React (Vite)** | Client-side Library |
 | | **Tailwind CSS** | Utility-first CSS Framework |
 | | **Axios** | API Fetching |
-| | **Context API / Redux** | State Management |
+| | **Context API / Redux** | State Management |   
 
 ## ✨ Tính năng nổi bật (Key Features)
 
