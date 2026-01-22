@@ -38,7 +38,7 @@ export const deleteCommentService = async (commentId: number, userId: number) =>
 // Sửa comment
 export const updateCommentService = async (commentId: number, content: string) => {
   return await db.update(comments)
-    .set({ content }) // Giả sử bạn có cột updatedAt
+    .set({ content }) 
     .where(eq(comments.id, commentId))
     .returning();
 };

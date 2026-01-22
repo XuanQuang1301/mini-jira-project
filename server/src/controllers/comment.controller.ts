@@ -58,9 +58,6 @@ export const deleteComment = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
         const userId = req.user.id;
-
-        // Lưu ý: Trong Service của bạn đang comment dòng check userId, 
-        // nhưng thực tế nên check ở đây hoặc mở comment trong service để bảo mật
         const deleted = await deleteCommentService(Number(id), userId);
         
         if (!deleted || deleted.length === 0) {

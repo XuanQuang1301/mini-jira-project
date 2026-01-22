@@ -7,11 +7,11 @@ export const createTaskService = async (data: any) => {
     // 1. Tạo task mới
     const [newTask] = await tx.insert(tasks).values(data).returning();
 
-    // 2. Ghi log khởi tạo (Lưu ý: tên cột phải khớp với schema của bạn)
+    // 2. Ghi log khởi tạo
     await tx.insert(taskHistory).values({
       taskId: newTask.id,
       userId: data.reporterId,
-      oldStatus: null, // Sửa từ fromStatus thành oldStatus nếu schema bạn đặt vậy
+      oldStatus: null, 
       newStatus: data.status || "TODO",
     });
 
@@ -48,11 +48,6 @@ export const updateTaskStatusService = async (taskId: number, userId: number, ne
 };
 export const deleteTaskService = async (taskId: number) => {
   return await db.transaction(async (tx) => {
-    // 1. Kiểm tra task có tồn tại không (tùy chọn nhưng nên có)
-    
-    // 2. Thực hiện xóa
-    // Lưu ý: Vì ta đã đặt ON DELETE CASCADE trong Schema cho taskHistory và comments,
-    // nên khi xóa task, các dữ liệu liên quan sẽ tự động bị xóa sạch.
     const result = await tx.delete(tasks)
       .where(eq(tasks.id, taskId))
       .returning();
