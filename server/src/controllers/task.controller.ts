@@ -1,5 +1,5 @@
 import { Request, Response } from "express";
-import { createTaskService, updateTaskStatusService, deleteTaskService } from "../services/task.service";
+import { createTaskService, updateTaskStatusService, deleteTaskService, getTaskbyProjectIdService, getMyTaskService} from "../services/task.service";
 
 // 1. Tạo Task mới
 export const createTask = async (req: any, res: Response) => {
@@ -56,3 +56,21 @@ export const deleteTask = async (req: Request, res: Response) => {
         res.status(500).json({ error: error.message });
     }
 };
+export const getTaskByProject = async (req: any, res: any) => {
+    try {
+        const {projectId} = req.params; 
+        const tasks = await getTaskbyProjectIdService(Number(projectId)); 
+        return res.status(200).json(tasks); 
+    }catch(error: any) {
+        return res.status(500).json({error: "Lỗi khi lấy danh sách Task", details: error.message})
+    }
+}
+export const getMyTasks = async (req: any, res: any) => {
+    try{    
+        const useid = req.user.id; 
+        const myTask = await getMyTaskService(useid); 
+        return res.status(200).json(myTask); 
+    } catch(error: any) {    
+        return res.status(500).json({error: "Lỗi khi lấy danh sáchcoong việc cá nhân", details: error.message}); 
+    }
+}

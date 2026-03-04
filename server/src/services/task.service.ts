@@ -1,13 +1,11 @@
 import { db } from "../db";
 import { tasks, taskHistory } from "../db/schema"; 
-import { eq } from "drizzle-orm";
+import { eq, or } from "drizzle-orm";
 
 export const createTaskService = async (data: any) => {
   return await db.transaction(async (tx) => {
     // 1. Tạo task mới
     const [newTask] = await tx.insert(tasks).values(data).returning();
-
-    // 2. Ghi log khởi tạo
     await tx.insert(taskHistory).values({
       taskId: newTask.id,
       userId: data.reporterId,
@@ -55,3 +53,18 @@ export const deleteTaskService = async (taskId: number) => {
     return result[0];
   });
 };
+export const getTaskbyProjectIdService = async (projectId : number) => {
+  return await db.select()
+  .from(tasks)
+  .where(eq(tasks.projectId, projectId))
+}
+export const getMyTaskService = async (useId: number) => {
+  return await db.select()
+  .from(tasks)
+  .where(
+    or(
+      eq(tasks.assigneeId, useId),
+      eq(tasks.reporterId, useId)
+    )
+  ); 
+}

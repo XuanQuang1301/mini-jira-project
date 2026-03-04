@@ -39,8 +39,6 @@ export const updateComment = async (req: any, res: Response) => {
     try {
         const { id } = req.params;
         const { content } = req.body;
-        
-        // Gọi service cập nhật
         const [updatedComment] = await updateCommentService(Number(id), content);
         
         if (!updatedComment) {

@@ -9,6 +9,6 @@ router.post("/register", register);
 router.post("/login", login);
 
 // Route cần bảo vệ (Private) - Chỉ những người đã đăng nhập mới lấy được danh sách user
-router.get("/", authMiddleware, getAllUsers);
+router.get("/", authMiddleware, getAllUsers);  
 
 export default router;
