@@ -1,4 +1,5 @@
 import {useState, useEffect} from 'react';
+import { useNavigate } from 'react-router-dom';
 import axios from 'axios'; 
 interface Project{
     id: number; 
@@ -17,7 +18,7 @@ export default function Projects (){
     const [newKey, setNewKey] = useState(''); 
     const [newDesc, setNewDesc] = useState(''); 
     const [isCreating, setIsCreating] = useState(false); 
-
+    const navigate = useNavigate(); 
     //Hàm lấy danh sách dự án (Tách ra để tái sử dụng)
     const fetchProjects = async()=> {
         try{
@@ -64,6 +65,19 @@ export default function Projects (){
             setIsCreating(false)
         }
     }
+    const handleDelete = async (id: number) => {
+        if(window.confirm("Bạn có chắc muốn xóa dự án này không")){
+            try{
+                const token = localStorage.getItem('token'); 
+                await axios.delete(`http://localhost:5000/api/projects/${id}`, {
+                    headers: {Authorization: `Bearer ${token}`}
+                }); 
+                fetchProjects(); 
+            }catch(err) {
+                alert("Không thể xóa dự án"); 
+            }
+        }
+    }
     return (
         <div> 
             {/* Phần Header của trang  */}
@@ -92,8 +106,9 @@ export default function Projects (){
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6'>
                 {projects.map((project) => (
                     <div
+                    onClick={() => navigate(`${project.id}`)}
                     key = {project.id}
-                    className='bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg hover:border-blue-500 transition cursor-pointer group'
+                    className='relative bg-gray-800 p-6 rounded-xl border border-gray-700 shadow-lg hover:border-blue-500 transition cursor-pointer group'
                     >
                         <div className='flex justify-between items-start mb-4'>
                             <h3 className='text-xl font-bold text-blue-400 group-hover:text-blue-300 transition'>{project.name}</h3>
