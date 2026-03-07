@@ -2,18 +2,32 @@ import { Request, Response } from "express";
 import { createTaskService, updateTaskStatusService, deleteTaskService, getTaskbyProjectIdService, getMyTaskService} from "../services/task.service";
 
 // 1. Tạo Task mới
-export const createTask = async (req: any, res: Response) => {
+export const createTask = async (req: any, res: any) => {
     try {
-        // reporterId lấy từ user đang đăng nhập qua authMiddleware
-        const reporterId = req.user.id; 
-        
-        // Gộp data từ body và reporterId để truyền vào service
-        const taskData = { ...req.body, reporterId };
-        
+        console.log("--- BẮT ĐẦU TẠO TASK ---");
+        console.log("1. req.user đang là:", req.user);
+        console.log("2. req.userId đang là:", req.userId);
+        const reporterId = req.user?.userId || req.user?.id || req.userId;
+        if (!reporterId) {
+            return res.status(400).json({ 
+                error: `Không tìm thấy ID! Hiện tại req.user đang là: ${JSON.stringify(req.user)}` 
+            });
+        }
+        const taskData = { 
+            ...req.body, 
+            reporterId: Number(reporterId) 
+        }; 
+
+        // Xử lý ngày tháng
+        if (taskData.dueDate) {
+            taskData.dueDate = new Date(taskData.dueDate);
+        }
+
         const task = await createTaskService(taskData);
-        res.status(201).json(task);
+        return res.status(201).json(task);
+
     } catch (error: any) {
-        res.status(400).json({ error: error.message });
+        return res.status(400).json({ error: error.message });
     }
 };
 
@@ -22,7 +36,7 @@ export const updateTaskStatus = async (req: any, res: Response) => {
     try {
         const { id } = req.params; // ID của task từ URL
         const { status } = req.body; // Trạng thái mới (TODO, IN_PROGRESS, DONE)
-        const userId = req.user.id; // Người thực hiện thay đổi
+        const userId = req.user.userId; // Người thực hiện thay đổi
 
         // Gọi service với đúng thứ tự tham số: taskId, userId, newStatus
         const updatedTask = await updateTaskStatusService(Number(id), userId, status);
@@ -67,8 +81,8 @@ export const getTaskByProject = async (req: any, res: any) => {
 }
 export const getMyTasks = async (req: any, res: any) => {
     try{    
-        const useid = req.user.id; 
-        const myTask = await getMyTaskService(useid); 
+        const useId = req.user.id; 
+        const myTask = await getMyTaskService(useId); 
         return res.status(200).json(myTask); 
     } catch(error: any) {    
         return res.status(500).json({error: "Lỗi khi lấy danh sáchcoong việc cá nhân", details: error.message}); 
