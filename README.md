@@ -1,4 +1,4 @@
-# 🚀 Mini-Jira Fullstack Project
+# Mini-Jira Fullstack Project
 
 > **Hệ thống quản lý công việc (Task Management) lấy cảm hứng từ Jira, hỗ trợ quản lý dự án, theo dõi tiến độ và thảo luận nhóm theo thời gian thực.**
 
@@ -53,7 +53,7 @@ Dự án này là một ứng dụng Fullstack mô phỏng các tính năng cố
 
 ---
 
-## 🚀 Hướng dẫn cài đặt (Installation)
+## Hướng dẫn cài đặt (Installation)
 
 ### Yêu cầu tiên quyết (Prerequisites)
 * Node.js (v18+)
