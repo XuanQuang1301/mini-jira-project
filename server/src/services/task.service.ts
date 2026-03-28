@@ -1,11 +1,13 @@
 import { db } from "../db";
 import { tasks, taskHistory } from "../db/schema"; 
-import { eq, or } from "drizzle-orm";
+import { eq, and, or } from "drizzle-orm";
 
+// 1. Tạo task mới
 export const createTaskService = async (data: any) => {
   return await db.transaction(async (tx) => {
-    // 1. Tạo task mới
     const [newTask] = await tx.insert(tasks).values(data).returning();
+    
+    // Lưu vào lịch sử task
     await tx.insert(taskHistory).values({
       taskId: newTask.id,
       userId: data.reporterId,
@@ -17,13 +19,12 @@ export const createTaskService = async (data: any) => {
   });
 };
 
+// 2. Cập nhật trạng thái (Kéo thả Kanban)
 export const updateTaskStatusService = async (taskId: number, userId: number, newStatus: string) => {
   return await db.transaction(async (tx) => {
-    // 1. Lấy trạng thái cũ
     const oldTask = await tx.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
     const oldStatus = oldTask[0]?.status;
 
-    // 2. Cập nhật task (tự động tính progress nếu là DONE)
     const [updatedTask] = await tx.update(tasks)
       .set({ 
         status: newStatus,
@@ -33,7 +34,6 @@ export const updateTaskStatusService = async (taskId: number, userId: number, ne
       .where(eq(tasks.id, taskId))
       .returning();
 
-    // 3. Lưu lịch sử
     await tx.insert(taskHistory).values({
       taskId,
       userId,
@@ -44,27 +44,55 @@ export const updateTaskStatusService = async (taskId: number, userId: number, ne
     return updatedTask;
   });
 };
-export const deleteTaskService = async (taskId: number) => {
-  return await db.transaction(async (tx) => {
-    const result = await tx.delete(tasks)
-      .where(eq(tasks.id, taskId))
-      .returning();
 
-    return result[0];
-  });
+// 3. Xóa Task
+export const deleteTaskService = async (taskId: number) => {
+  const [result] = await db.delete(tasks)
+    .where(eq(tasks.id, taskId))
+    .returning();
+  return result;
 };
+
+// 4. Lấy Task theo Dự án
 export const getTaskbyProjectIdService = async (projectId : number) => {
   return await db.select()
-  .from(tasks)
-  .where(eq(tasks.projectId, projectId))
-}
-export const getMyTaskService = async (useId: number) => {
-  return await db.select()
-  .from(tasks)
-  .where(
-    or(
-      eq(tasks.assigneeId, useId),
-      eq(tasks.reporterId, useId)
-    )
-  ); 
+    .from(tasks)
+    .where(eq(tasks.projectId, projectId));
+};
+
+// 5. LẤY TASK CỦA TÔI (SỬA LỖI TRỐNG KANBAN)
+export const getMyTasksService = async (userId: number) => {
+    return await db.select()
+        .from(tasks)
+        .where(
+            or(
+                eq(tasks.assigneeId, userId), // Tôi là người làm
+                eq(tasks.reporterId, userId)  // Hoặc tôi là người giao (để quản lý)
+            )
+        ); 
+};
+
+// 6. LẤY CHI TIẾT TASK 
+export const getTaskByIdService = async (taskId: number) => {
+  const result = await db.select()
+    .from(tasks)
+    .where(eq(tasks.id, taskId));
+  return result[0]; 
+};
+
+// 7. Cập nhật thông tin Task
+export const updateTaskService = async (taskId: number, updateData: any) => {
+  const [result] = await db.update(tasks)
+    .set(updateData)
+    .where(eq(tasks.id, taskId))
+    .returning(); 
+  return result; 
+};
+
+// hàm cập nhật cho assigneeId 
+export const updateTaskAssignService = async (taskId: number, assigneeId: number | null) => {
+  return await db.update(tasks)
+  .set({assigneeId})
+  .where(eq(tasks.id, taskId))
+  .returning(); 
 }

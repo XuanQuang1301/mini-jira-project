@@ -1,6 +1,6 @@
 import { db } from "../db";
 import { comments } from "../db/schema";
-import { eq, desc } from "drizzle-orm";
+import { eq, desc, and  } from "drizzle-orm";
 import { users } from "../db/schema";
 
 export const getCommentsByTaskService = async (taskId: number) => {
@@ -25,20 +25,27 @@ export const addCommentService = async (taskId: number, userId: number, content:
     taskId,
     userId,
     content,
-  }).returning();
+  }); 
 };
 // Xóa comment
 export const deleteCommentService = async (commentId: number, userId: number) => {
   return await db.delete(comments)
-    .where(eq(comments.id, commentId))
-    // .where(eq(comments.userId, userId)) // Chỉ chủ nhân mới được xóa (Logic phân quyền)
-    .returning();
+    .where(
+        and( // Gộp 2 điều kiện: Vừa phải đúng ID comment, vừa phải đúng User đó tạo
+            eq(comments.id, commentId),
+            eq(comments.userId, userId) 
+        )
+    );
 };
 
 // Sửa comment
-export const updateCommentService = async (commentId: number, content: string) => {
+export const updateCommentService = async (commentId: number, userId: number, content: string) => {
   return await db.update(comments)
-    .set({ content }) 
-    .where(eq(comments.id, commentId))
-    .returning();
+    .set({ content })
+    .where(
+        and(
+            eq(comments.id, commentId),
+            eq(comments.userId, userId) // Bắt buộc ID người gửi yêu cầu phải khớp với người tạo
+        )
+    );
 };

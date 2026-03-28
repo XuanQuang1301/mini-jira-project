@@ -4,7 +4,9 @@ import {
   loginUserService, 
   getAllUsersService 
 } from "../services/user.service";
-
+import {db} from "../db"; 
+import {users} from "../db/schema"
+import {eq}from "drizzle-orm"; 
 // Đăng ký người dùng mới
 export const register = async (req: Request, res: Response) => {
   try {
@@ -30,11 +32,27 @@ export const login = async (req: Request, res: Response) => {
 };
 
 // Lấy danh sách tất cả người dùng (Thường dùng cho Admin hoặc chọn member)
-export const getAllUsers = async (req: Request, res: Response) => {
-  try {
-    const users = await getAllUsersService();
-    res.json(users);
-  } catch (error: any) {
-    res.status(500).json({ error: "Lỗi lấy danh sách user" });
-  }
+export const getAllUsers = async (req: any, res: any) => {
+    try {
+        const allUsers = await db.select({
+            id: users.id,
+            name: users.name,
+            email: users.email,
+            avatarUrl: users.avatarUrl, 
+            createdAt: users.createdAt,
+        }).from(users);
+        
+        res.status(200).json(allUsers);
+    } catch (error: any) {
+        res.status(500).json({ error: "Lỗi khi lấy danh sách người dùng" });
+    }
+};
+export const deleteUser = async (req: Request, res: Response) => {
+    try {
+        const { id } = req.params;
+        await db.delete(users).where(eq(users.id, Number(id)));
+        res.status(200).json({ message: "Xóa thành viên thành công" });
+    } catch (error: any) {
+        res.status(500).json({ error: "Lỗi khi xóa thành viên" });
+    }
 };

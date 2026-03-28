@@ -21,14 +21,16 @@ export const getComments = async (req: Request, res: Response) => {
 export const addComment = async (req: any, res: Response) => {
     try {
         const { taskId, content } = req.body;
-        const userId = req.user.id; // Lấy từ authMiddleware
+        // Lấy ID chuẩn xác từ Token
+        const userId = req.user?.id || req.user?.userId; 
 
         if (!content) {
             return res.status(400).json({ error: "Nội dung bình luận không được để trống" });
         }
 
-        const [newComment] = await addCommentService(Number(taskId), userId, content);
-        res.status(201).json(newComment);
+        // MySQL không có .returning() nên không cần hứng [newComment]
+        await addCommentService(Number(taskId), userId, content);
+        res.status(201).json({ message: "Thêm bình luận thành công" });
     } catch (error: any) {
         res.status(400).json({ error: error.message });
     }
@@ -37,15 +39,18 @@ export const addComment = async (req: any, res: Response) => {
 // 3. Cập nhật nội dung bình luận
 export const updateComment = async (req: any, res: Response) => {
     try {
-        const { id } = req.params;
+        const { id } = req.params; // Đây là ID của comment
         const { content } = req.body;
-        const [updatedComment] = await updateCommentService(Number(id), content);
-        
-        if (!updatedComment) {
-            return res.status(404).json({ error: "Không tìm thấy bình luận" });
+        const userId = req.user?.id || req.user?.userId;
+
+        if (!content) {
+            return res.status(400).json({ error: "Nội dung không được để trống" });
         }
+
+        // Đã sửa: Truyền đủ 3 tham số để phân quyền bảo mật
+        await updateCommentService(Number(id), userId, content); 
         
-        res.json(updatedComment);
+        res.status(200).json({ message: "Đã cập nhật bình luận" });
     } catch (error: any) {
         res.status(400).json({ error: error.message });
     }
@@ -54,15 +59,12 @@ export const updateComment = async (req: any, res: Response) => {
 // 4. Xóa bình luận
 export const deleteComment = async (req: any, res: Response) => {
     try {
-        const { id } = req.params;
-        const userId = req.user.id;
-        const deleted = await deleteCommentService(Number(id), userId);
+        const { id } = req.params; // ID của comment
+        const userId = req.user?.id || req.user?.userId;
         
-        if (!deleted || deleted.length === 0) {
-            return res.status(404).json({ error: "Xóa thất bại. Bình luận không tồn tại." });
-        }
-
-        res.json({ message: "Đã xóa bình luận thành công" });
+        await deleteCommentService(Number(id), userId);
+        
+        res.status(200).json({ message: "Đã xóa bình luận thành công" });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

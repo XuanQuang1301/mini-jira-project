@@ -7,8 +7,6 @@ const app = express();
 
 app.use(cors());
 app.use(express.json());
-
-// Sử dụng Router tổng
 app.use("/api", rootRouter);
 
 const PORT = process.env.PORT || 5000;
