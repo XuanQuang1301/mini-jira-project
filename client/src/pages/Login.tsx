@@ -21,9 +21,12 @@ export default function Login(){
         setIsLoading(true);
         setError('');
         try{
+            
             const response =  await axios.post('http://localhost:5000/api/users/login', formData);
             const token = response.data.token; 
+            const userId = response.data.user.id;
             localStorage.setItem('token', token); 
+            localStorage.setItem('userId', userId.toString());
             console.log('Đăng nhập thành công! Token:', token); 
             navigate('/'); 
         }

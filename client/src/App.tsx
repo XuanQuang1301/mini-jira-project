@@ -7,6 +7,8 @@ import Projects from './pages/Projects';
 import ProjectDetail from './pages/ProjectDetail';
 import MyTasks from './pages/MyTasks';
 import Profile from './pages/Profile';
+import UserManagement from './pages/UserManagement'; 
+
 function App() {
   return (
     <Routes>
@@ -18,6 +20,7 @@ function App() {
         <Route path = "/projects/:id" element={<ProjectDetail /> } /> 
         <Route path ="/tasks" element={<MyTasks /> } /> 
         <Route path="/profile" element={<Profile />} />
+        <Route path="/users" element={<UserManagement /> }/> 
       </Route>
     </Routes>
   );

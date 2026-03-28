@@ -3,3 +3,20 @@
 body {
   @apply bg-gray-900 text-white; 
 }
+/* Custom Scrollbar cho vùng danh sách Task */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: #e2e8f0; /* Màu xám nhạt */
+    border-radius: 20px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: #cbd5e1;
+}

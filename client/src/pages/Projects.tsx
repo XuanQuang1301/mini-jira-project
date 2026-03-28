@@ -22,6 +22,8 @@ export default function Projects (){
     const [isCreating, setIsCreating] = useState(false); 
     const navigate = useNavigate(); 
 
+    const [joinCode, setJoinCode] = useState('');
+
     // Hàm lấy danh sách dự án
     const fetchProjects = async()=> {
         try{
@@ -48,11 +50,13 @@ export default function Projects (){
         setIsCreating(true);
         try{
             const token = localStorage.getItem('token'); 
-
+            const storedUserId = localStorage.getItem('userId');
+            const ownerId = storedUserId ? Number(storedUserId) : null;
             await axios.post('http://localhost:5000/api/projects', {
                 name: newName, 
                 key: newKey, 
-                description: newDesc
+                description: newDesc, 
+                ownerId: ownerId
             }, {
                 headers: {Authorization: `Bearer ${token}`}
             }); 
@@ -83,13 +87,28 @@ export default function Projects (){
         }
     }
 
+    const handleJoinProject = async () => {
+        if (!joinCode.trim()) return;
+        try {
+            const token = localStorage.getItem('token');
+            const res = await axios.post('http://localhost:5000/api/projects/join', 
+                { projectCode: joinCode }, 
+                { headers: { Authorization: `Bearer ${token}` } }
+            );
+            alert(res.data.message);
+            setJoinCode('');
+            // Không cần load lại danh sách vì lúc này đang là PENDING (chưa hiện)
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Mã không chính xác");
+        }
+    };
     return (
         <div className="h-full flex flex-col"> 
             {/* Phần Header của trang  */}
             <div className="flex justify-between items-center mb-8"> 
                 <div>
                     <h1 className='text-3xl font-extrabold text-gray-900 mb-1'> Dự án của tôi </h1>
-                    <p className='text-gray-500 text-sm'>Quản lý các dự án bạn đang làm</p>
+                    {/* <p className='text-gray-500 text-sm'>Quản lý các dự án bạn đang làm</p> */}
                 </div>
                 <button 
                     onClick={()=> setIsModalOpen(true)}
@@ -114,6 +133,27 @@ export default function Projects (){
                     <p className="text-gray-400 text-sm">Hãy tạo một dự án mới để bắt đầu công việc!</p>
                 </div>
             )}
+            
+            <div className="mb-10 p-6 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-3xl border border-blue-100 flex flex-col md:flex-row items-center gap-4">
+                <div className="flex-1">
+                    <h3 className="text-sm font-black text-blue-900 uppercase">Gia nhập dự án mới</h3>
+                    <p className="text-xs text-blue-600 font-medium">Nhập mã dự án (Key) để gửi yêu cầu tham gia cho Manager.</p>
+                </div>
+                <div className="flex gap-2 w-full md:w-auto">
+                    <input 
+                        value={joinCode}
+                        onChange={(e) => setJoinCode(e.target.value)}
+                        placeholder="Ví dụ: T001..." 
+                        className="px-4 py-3 rounded-2xl border-none shadow-sm text-sm focus:ring-2 focus:ring-blue-500 outline-none w-full md:w-48"
+                    />
+                    <button 
+                        onClick={handleJoinProject}
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black text-xs shadow-lg transition active:scale-95 shrink-0"
+                    >
+                        THAM GIA
+                    </button>
+                </div>
+            </div>
 
             {/* Lưới danh sách các dự án  */}
             <div className='grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-8'>
