@@ -5,7 +5,7 @@ export const updateTaskProgressAuto = async(taskId: number) => {
     const allSubs = await db.select().from(subTasks).where(eq(subTasks.taskId, taskId)); 
     if(allSubs.length === 0 ) return ; 
     const doneCount = allSubs.filter(s => s.isDone).length;
-    const percentage = Math.round(doneCount / allSubs.length) * 100; 
+    const percentage = Math.round((doneCount / allSubs.length) * 100); 
     await db.update(tasks).set({progress: percentage}).where(eq(tasks.id, taskId)); 
 }
 export const getSubTaskService = async(taskId: number) => {

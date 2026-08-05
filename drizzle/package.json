@@ -1,0 +1,8 @@
+{
+  "name": "drizzle",
+  "private": true,
+  "version": "1.0.0",
+  "scripts": {
+    "dev": "cd ../server && npx drizzle-kit studio --port 4984"
+  }
+}

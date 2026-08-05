@@ -27,8 +27,6 @@ export const addComment = async (req: any, res: Response) => {
         if (!content) {
             return res.status(400).json({ error: "Nội dung bình luận không được để trống" });
         }
-
-        // MySQL không có .returning() nên không cần hứng [newComment]
         await addCommentService(Number(taskId), userId, content);
         res.status(201).json({ message: "Thêm bình luận thành công" });
     } catch (error: any) {

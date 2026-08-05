@@ -1,6 +1,11 @@
 import { useState, useEffect } from 'react'; 
-import { useParams, Link } from 'react-router-dom'; 
-import axios from 'axios';
+import { useParams, Link, useNavigate } from 'react-router-dom'; 
+import api from '../services/api';
+import { 
+    Plus, Trash2, Edit3, UserPlus, Users, Settings, 
+    ArrowLeft, Hash, CheckCircle2, Clock, AlertCircle, MessageSquare, 
+    X, Check, Shield, Crown, User, Calendar, Tag, AlertTriangle, RotateCcw
+} from 'lucide-react';
 
 interface Project {
     id: number; 
@@ -8,6 +13,7 @@ interface Project {
     description: string; 
     key: string; 
     role: string; 
+    status?: string; 
 }
 
 interface Task {
@@ -31,7 +37,10 @@ export default function ProjectDetail() {
     const [isLoading, setIsLoading] = useState(true);  
     const [allUsers, setAllUsers] = useState<any[]>([]);
     
-    // --- STATE DÀNH CHO FORM TẠO TASK ---
+    // TAB CONTROLS
+    const [activeTab, setActiveTab] = useState<'tasks' | 'members'>('tasks');
+
+    // CREATE TASK FORM
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [isCreating, setIsCreating] = useState(false);
     const [newTaskTitle, setNewTaskTitle] = useState('');
@@ -41,33 +50,91 @@ export default function ProjectDetail() {
     const [newTaskAssignee, setNewTaskAssignee] = useState('');
     const [newTaskPosition, setNewTaskPosition] = useState(0); 
 
-    // --- STATE CHO MODAL XEM CHI TIẾT & COMMENT ---
+    // DETAIL & COMMENT MODAL
     const [selectedTask, setSelectedTask] = useState<Task | null>(null);
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [comments, setComments] = useState<any[]>([]);
     const [commentText, setCommentText] = useState('');
 
-    // --- STATE DUYỆT THÀNH VIÊN ---
+    // MEMBER & APPROVAL
     const [pendingMembers, setPendingMembers] = useState<any[]>([]);
     const [isPendingOpen, setIsPendingOpen] = useState(false); 
     const [projectMembersList, setProjectMembersList] = useState<any[]>([]);
 
-    // STATE kiểm soát Dropdown chọn người 
+    // ADD MEMBER FORM
+    const [showAddMemberModal, setShowAddMemberModal] = useState(false);
+    const [newMemberEmail, setNewMemberEmail] = useState('');
+    const [newMemberRole, setNewMemberRole] = useState('MEMBER'); 
+    const [isAddingMember, setIsAddingMember] = useState(false);
+
+    // ASSIGNEE DROPDOWN CONTROL
     const [assigningTaskId, setAssigningTaskId] = useState<number | null>(null);
 
-    // State lưu danh sách checklist của task đang chọn
+    // SUBTASKS
     const [subTasks, setSubTasks] = useState<any[]>([]);
     const [newSubContent, setNewSubContent] = useState('');
-    const fetchData = async () => {
-        setIsLoading(true); 
+    
+    // REJECT TASK
+    const [showRejectModal, setShowRejectModal] = useState(false);
+    const [rejectReason, setRejectReason] = useState('');
+    const [isRejecting, setIsRejecting] = useState(false);
+    const navigate = useNavigate();
+
+    // EDIT PROJECT
+    const [showEditProjectModal, setShowEditProjectModal] = useState(false);
+    const [editProjName, setEditProjName] = useState('');
+    const [editProjKey, setEditProjKey] = useState('');
+    const [editProjDesc, setEditProjDesc] = useState('');
+    const [editProjStatus, setEditProjStatus] = useState('PLANNING');
+    const [isUpdatingProj, setIsUpdatingProj] = useState(false);
+    
+    // DELETE TASK
+    const [taskToDelete, setTaskToDelete] = useState<number | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
+
+    // DELETE PROJECT
+    const [showDeleteProjectModal, setShowDeleteProjectModal] = useState(false);
+    const [isDeletingProject, setIsDeletingProject] = useState(false);
+
+    // EDIT TASK
+    const [isEditingTask, setIsEditingTask] = useState(false);
+    const [isUpdatingTask, setIsUpdatingTask] = useState(false);
+    const [editTaskTitle, setEditTaskTitle] = useState('');
+    const [editTaskDesc, setEditTaskDesc] = useState('');
+    const [editTaskPriority, setEditTaskPriority] = useState('MEDIUM');
+    const [editTaskDueDate, setEditTaskDueDate] = useState('');
+    const [editTaskAssignee, setEditTaskAssignee] = useState('');
+
+    const { myRole, currentUserId } = (() => {
         try {
-            const token = localStorage.getItem('token'); 
-            const config = { headers: { Authorization: `Bearer ${token}` } }; 
+            const token = localStorage.getItem('token');
+            if (!token) return { myRole: 'MEMBER', currentUserId: null };            
+            const payload = JSON.parse(atob(token.split('.')[1]));
+            const currentUserEmail = payload.sub;
+
+            const me = projectMembersList.find(m => m.userEmail === currentUserEmail || m.userName === currentUserEmail);
+            
+            return { 
+                myRole: me ? me.role : 'MEMBER', 
+                currentUserId: me ? me.userId : null 
+            };
+        } catch (error) {
+            return { myRole: 'MEMBER', currentUserId: null };
+        }
+    })();
+    
+    const canModifyTask = myRole === 'OWNER' || myRole === 'MANAGER' || (selectedTask?.assigneeId === currentUserId);
+    const canToggleSub = selectedTask?.assigneeId === currentUserId;
+    const isPrivileged = myRole === 'OWNER' || myRole === 'MANAGER';
+
+    const fetchData = async (showLoading = true) => {
+        if (showLoading) setIsLoading(true); 
+        try {
             const [projectRes, taskRes, membersRes, allUsersRes] = await Promise.all([
-                axios.get(`http://localhost:5000/api/projects/${id}`, config), 
-                axios.get(`http://localhost:5000/api/tasks/project/${id}`, config),
-                axios.get(`http://localhost:5000/api/projects/${id}/members`, config),
-                axios.get(`http://localhost:5000/api/users`, config) // Vẫn cần cái này để map tên ở bảng
+                api.get(`/api/project/${id}`), 
+                api.get(`/api/project/${id}/tasks`),
+                api.get(`/api/project/${id}/members`),
+                api.get(`/api/users`) 
             ]); 
 
             setProject(projectRes.data); 
@@ -75,511 +142,897 @@ export default function ProjectDetail() {
             setProjectMembersList(membersRes.data);
             setAllUsers(allUsersRes.data);
             
-            const projRole = projectRes.data.role;
-            if (projRole === 'OWNER' || projRole === 'MANAGER' ) {
+            const token = localStorage.getItem('token');
+            const payload = token ? JSON.parse(atob(token.split('.')[1])) : null;
+            const currentUserEmail = payload ? payload.sub : null;
+            const me = membersRes.data.find((m: any) => m.userEmail === currentUserEmail || m.userName === currentUserEmail);
+            const fetchedRole = me ? me.role : 'MEMBER';
+            
+            if (fetchedRole === 'OWNER' || fetchedRole === 'MANAGER') {
                 fetchPendingMembers();
             }
         } catch (error: any) { 
             console.error("Lỗi tải dữ liệu:", error);
             if (error.response?.status === 404) {
-                alert("Không tìm thấy dự án hoặc API /members chưa được tạo!");
+                alert("Không tìm thấy dự án!");
             }
         } finally {
-            setIsLoading(false); 
+            if (showLoading) setIsLoading(false); 
         }
     };
 
     const fetchPendingMembers = async () => {
-        if(!id) return; 
+        if (!id) return; 
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`http://localhost:5000/api/projects/${id}/pending`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get(`/api/project/${id}/pending`);
             setPendingMembers(res.data);
-        } catch (error) {
-            console.error("Lỗi lấy danh sách chờ:", error);
+        } catch (error: any) {
+            if (error.response?.status === 403) {
+                setPendingMembers([]); 
+            } else {
+                console.error("Lỗi lấy danh sách chờ:", error);
+            }
         }
     };
+
     useEffect(() => {
-        fetchData(); 
-        //fetchPendingMembers();
+        fetchData(true); 
     }, [id]); 
-    // --- XỬ LÝ DUYỆT THÀNH VIÊN ---
+
     const handleApprove = async (recordId: number) => {
         try {
-            const token = localStorage.getItem('token');
-            // Gọi API chuyển status từ PENDING -> JOINED
-            await axios.post('http://localhost:5000/api/projects/approve', 
-                { memberRecordId: recordId }, 
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            alert("Đã duyệt thành viên! Bây giờ dự án sẽ hiện bên member 🎊");
+            await api.post('/api/project/approve', { memberRecordId: recordId });
+            alert("Đã phê duyệt thành viên vào dự án!");
             setPendingMembers(prev => prev.filter(m => m.id !== recordId));
             if (pendingMembers.length === 1) setIsPendingOpen(false);
-            fetchData(); // Load lại dữ liệu project
+            fetchData(); 
         } catch (error) {
-            alert("Lỗi khi duyệt");
+            alert("Lỗi khi duyệt thành viên");
         }
     };
 
-    // --- XỬ LÝ COMMENT ---
-    const fetchComments = async (taskId: number) => {
+    const handleAddMember = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsAddingMember(true);
         try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`http://localhost:5000/api/comments/task/${taskId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setComments(res.data);
-        } catch (error) { console.error(error); }
+            const res = await api.post(`/api/project/${id}/members`, { email: newMemberEmail, role: newMemberRole });
+            alert(res.data.message || "Đã thêm thành viên thành công!");
+            setShowAddMemberModal(false);
+            setNewMemberEmail('');
+            fetchData();
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Không thể thêm thành viên!");
+        } finally {
+            setIsAddingMember(false);
+        }
     };
 
-    const handleOpenDetail = (task: Task) => {
-        setSelectedTask(task);
-        setIsDetailOpen(true);
-        setCommentText('');
-        fetchComments(task.id);
-        fetchSubTasks(task.id);
+    const handleRemoveMember = async (memberId: number, memberName: string) => {
+        if (window.confirm(`Bạn có chắc chắn muốn xóa thành viên "${memberName}" khỏi dự án?`)) {
+            try {
+                await api.delete(`/api/project/${id}/members/${memberId}`);
+                alert("Đã xóa thành viên!");
+                fetchData();
+            } catch (error: any) {
+                alert(error.response?.data?.error || "Lỗi khi xóa thành viên");
+            }
+        }
     };
 
-    const handleSendComment = async () => {
-        if (!commentText.trim() || !selectedTask) return;
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(`http://localhost:5000/api/comments`, {
-                taskId: selectedTask.id,
-                content: commentText
-            }, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setCommentText('');
-            fetchComments(selectedTask.id);
-        } catch (error) { alert("Lỗi gửi bình luận"); }
-    };
-
-    // --- XỬ LÝ TASK ---
     const handleCreateTask = async (e: React.FormEvent) => {
         e.preventDefault(); 
         setIsCreating(true); 
         try {
-            const token = localStorage.getItem('token'); 
-            const payload = {
-                projectId: Number(id),
-                title: newTaskTitle,
-                description: newTaskDesc || "Chưa có mô tả chi tiết",
-                priority: newTaskPriority,
-                status: 'TODO',
-                position: Number(newTaskPosition) || 0,
-                progress: 0,
-                dueDate: newTaskDueDate ? new Date(newTaskDueDate).toISOString() : null,
+            await api.post(`/api/project/${id}/tasks`, {
+                title: newTaskTitle, 
+                description: newTaskDesc, 
+                priority: newTaskPriority, 
+                dueDate: newTaskDueDate || null,
                 assigneeId: newTaskAssignee ? Number(newTaskAssignee) : null,
-            };
-
-            await axios.post('http://localhost:5000/api/tasks', payload, {
-                headers: { Authorization: `Bearer ${token}` }
-            }); 
+                position: Number(newTaskPosition) || 0
+            });
             
             setIsModalOpen(false); 
-            setNewTaskTitle(''); setNewTaskDesc('');
+            setNewTaskTitle(''); 
+            setNewTaskDesc(''); 
+            setNewTaskPriority('MEDIUM'); 
+            setNewTaskDueDate(''); 
+            setNewTaskAssignee('');
+            setNewTaskPosition(0);
             fetchData(); 
-        } catch (error: any) {
-            alert("Lỗi tạo Task: " + (error.response?.data?.error || error.message)); 
+        } catch (err: any) {
+            console.error("Lỗi tạo Task:", err); 
+            alert(err.response?.data?.error || "Không thể tạo Task!"); 
         } finally {
             setIsCreating(false); 
         }
     };
 
-    const handleDeleteTask = async (taskId: number) => {
-        if (!window.confirm("Xóa thẻ công việc này?")) return;
+    const handleOpenDetail = async (task: Task) => {
+        setSelectedTask(task);
+        setIsDetailOpen(true);
+        fetchSubTasks(task.id);
+        
         try {
-            const token = localStorage.getItem('token');
-            await axios.delete(`http://localhost:5000/api/tasks/${taskId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
+            const res = await api.get(`/api/project/${id}/tasks/${task.id}/comments`);
+            setComments(res.data);
+        } catch (err) {
+            console.error("Lỗi lấy comment:", err);
+        }
+    };
+
+    const fetchSubTasks = async (taskId: number) => {
+        try {
+            const res = await api.get(`/api/tasks/${taskId}/subtasks`);
+            setSubTasks(res.data);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
+    const handleAddSubTask = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!newSubContent.trim() || !selectedTask) return;
+        try {
+            await api.post(`/api/tasks/${selectedTask.id}/subtasks`, { content: newSubContent });
+            setNewSubContent('');
+            fetchSubTasks(selectedTask.id);
+            fetchData(false);
+        } catch (err) {
+            alert("Lỗi thêm subtask");
+        }
+    };
+
+    const handleToggleSubTask = async (subId: number, currentStatus: boolean) => {
+        if (!selectedTask) return;
+        try {
+            await api.patch(`/api/tasks/subtasks/${subId}`, { isDone: !currentStatus });
+            fetchSubTasks(selectedTask.id);
+            fetchData(false);
+        } catch (err) {
+            alert("Lỗi cập nhật subtask");
+        }
+    };
+
+    const handleDeleteSubTask = async (subId: number) => {
+        if (!selectedTask) return;
+        try {
+            await api.delete(`/api/tasks/subtasks/${subId}`);
+            fetchSubTasks(selectedTask.id);
+            fetchData(false);
+        } catch (err) {
+            alert("Lỗi xóa subtask");
+        }
+    };
+
+    const handleAddComment = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!commentText.trim() || !selectedTask) return;
+        try {
+            const res = await api.post(`/api/project/${id}/tasks/${selectedTask.id}/comments`, { content: commentText });
+            setComments([res.data, ...comments]);
+            setCommentText('');
+        } catch (err) {
+            console.error("Lỗi gửi comment:", err);
+            alert("Không thể gửi bình luận!");
+        }
+    };
+
+    const handleQuickAssign = async (taskId: number, assigneeId: number | null) => {
+        try {
+            await api.patch(`/api/project/${id}/tasks/${taskId}/assignee`, { assigneeId });
+            setAssigningTaskId(null);
+            fetchData(false); 
+        } catch (error) {
+            console.error("Lỗi giao việc:", error);
+            alert("Không thể thay đổi người làm!");
+        }
+    };
+
+    const handleStatusChange = async (taskId: number, newStatus: string) => {
+        try {
+            await api.patch(`/api/project/${id}/tasks/${taskId}/status`, { status: newStatus });
+            
+            if (selectedTask && selectedTask.id === taskId) {
+                setSelectedTask({ ...selectedTask, status: newStatus });
+            }
+            fetchData(false); 
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Lỗi khi đổi trạng thái!");
+        }
+    };
+
+    const handleRejectTask = async () => {
+        if (!selectedTask || !rejectReason.trim()) return;
+        setIsRejecting(true);
+        try {
+            await api.patch(`/api/project/${id}/tasks/${selectedTask.id}/status`, { status: 'REJECTED', rejectReason });
+            
+            setSelectedTask({ ...selectedTask, status: 'REJECTED' });
+            setShowRejectModal(false);
+            setRejectReason('');
+            fetchData(false);
+            alert("Đã từ chối task thành công!");
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Lỗi khi từ chối task!");
+        } finally {
+            setIsRejecting(false);
+        }
+    };
+
+    const openEditProjectModal = () => {
+        if (!project) return;
+        setEditProjName(project.name);
+        setEditProjKey(project.key);
+        setEditProjDesc(project.description || '');
+        setEditProjStatus(project.status || 'PLANNING');
+        setShowEditProjectModal(true);
+    };
+
+    const handleUpdateProject = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setIsUpdatingProj(true);
+        try {
+            await api.patch(`/api/project/${id}`, { name: editProjName, key: editProjKey, description: editProjDesc, status: editProjStatus });
+            alert("Cập nhật dự án thành công!");
+            setShowEditProjectModal(false);
             fetchData();
-        } catch (error: any) { alert("Lỗi khi xóa"); }
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Lỗi khi cập nhật dự án");
+        } finally {
+            setIsUpdatingProj(false);
+        }
+    };
+
+    const handleDeleteTask = async () => {
+        if (!taskToDelete) return;
+        setIsDeleting(true);
+        try {
+            await api.delete(`/api/project/${id}/tasks/${taskToDelete}`);
+            
+            if (selectedTask && selectedTask.id === taskToDelete) {
+                setIsDetailOpen(false);
+                setSelectedTask(null);
+            }
+            setTaskToDelete(null);
+            fetchData();
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Lỗi khi xóa công việc!");
+        } finally {
+            setIsDeleting(false);
+        }
+    };
+
+    const executeDeleteProject = async () => {
+        setIsDeletingProject(true);
+        try {
+            await api.delete(`/api/project/delete/${id}`);
+            alert("Đã xóa dự án thành công!");
+            navigate('/projects');
+        } catch (err: any) {
+            alert(err.response?.data?.error || "Không thể xóa dự án!");
+        } finally {
+            setIsDeletingProject(false);
+            setShowDeleteProjectModal(false);
+        }
+    };
+
+    const startEditingTask = () => {
+        if (!selectedTask) return;
+        setEditTaskTitle(selectedTask.title);
+        setEditTaskDesc(selectedTask.description || '');
+        setEditTaskPriority(selectedTask.priority);
+        setEditTaskDueDate(selectedTask.dueDate ? new Date(selectedTask.dueDate).toISOString().split('T')[0] : '');
+        setEditTaskAssignee(selectedTask.assigneeId ? String(selectedTask.assigneeId) : '');
+        setIsEditingTask(true);
+    };
+
+    const handleSaveTaskEdit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (!selectedTask) return;
+        setIsUpdatingTask(true);
+        try {
+            await api.put(`/api/project/${id}/tasks/${selectedTask.id}`, 
+                {
+                    title: editTaskTitle,
+                    description: editTaskDesc,
+                    priority: editTaskPriority,
+                    dueDate: editTaskDueDate || null,
+                    assigneeId: editTaskAssignee ? Number(editTaskAssignee) : null
+                }
+            );
+
+            const updatedTask = {
+                ...selectedTask,
+                title: editTaskTitle,
+                description: editTaskDesc,
+                priority: editTaskPriority,
+                dueDate: editTaskDueDate || null,
+                assigneeId: editTaskAssignee ? Number(editTaskAssignee) : null
+            };
+
+            setSelectedTask(updatedTask);
+            setIsEditingTask(false);
+            fetchData(false);
+        } catch (error: any) {
+            alert(error.response?.data?.error || "Lỗi khi cập nhật công việc!");
+        } finally {
+            setIsUpdatingTask(false);
+        }
     };
 
     const getStatusStyle = (status: string) => {
-        switch(status) {
-            case 'TODO': return 'bg-gray-50 text-gray-500 border-gray-200';
-            case 'IN_PROGRESS': return 'bg-blue-50 text-blue-600 border-blue-200';
-            case 'DONE': return 'bg-green-50 text-green-600 border-green-200';
-            default: return 'bg-gray-50 text-gray-500';
+        switch (status) {
+            case 'DONE': return 'bg-emerald-50 text-emerald-600 border-emerald-200';
+            case 'IN_PROGRESS': return 'bg-amber-50 text-amber-600 border-amber-200';
+            case 'REVIEW': return 'bg-purple-50 text-purple-600 border-purple-200';
+            case 'REJECTED': return 'bg-rose-50 text-rose-600 border-rose-200';
+            default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
 
     const getPriorityStyle = (priority: string) => {
-        switch(priority) {
-            case 'HIGH': return 'bg-orange-50 text-orange-600';
-            case 'URGENT': return 'bg-red-50 text-red-600 border-red-100';
-            default: return 'bg-gray-50 text-gray-500';
+        switch (priority) {
+            case 'HIGH': return 'bg-rose-50 text-rose-600 border-rose-200';
+            case 'MEDIUM': return 'bg-amber-50 text-amber-600 border-amber-200';
+            default: return 'bg-slate-100 text-slate-600 border-slate-200';
         }
     };
-    
-    const handleQuickAssign = async (taskId: number, userId: number) => {
-        try {
-            const token = localStorage.getItem('token'); 
-            await axios.patch(`http://localhost:5000/api/tasks/${taskId}/assign`, 
-            {assigneeId: userId}, 
-            {headers: {Authorization: `Bearer ${token}`}}); 
-            setTasks(prevTasks => prevTasks.map(task => 
-                task.id === taskId ? { ...task, assigneeId: userId } : task
-            ));
-            setAssigningTaskId(null); 
-        } catch(error: any){
-            console.error("Chi tiết lỗi Backend:", error.response?.data || error.message);
-        alert("Lỗi khi giao việc: " + (error.response?.data?.error || "Không kết nối được API"));
-        }
+
+    if (isLoading) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 text-blue-600 text-xs font-semibold gap-3 animate-pulse">
+                <div className="w-8 h-8 rounded-full border-2 border-blue-600 border-t-transparent animate-spin" />
+                <span>Đang tải thông tin dự án...</span>
+            </div>
+        );
     }
 
-    // Hàm lấy danh sách subtasks khi mở Modal
-    const fetchSubTasks = async (taskId: number) => {
-        try {
-            const token = localStorage.getItem('token');
-            const res = await axios.get(`http://localhost:5000/api/subtasks/task/${taskId}`, {
-                headers: { Authorization: `Bearer ${token}` }
-            });
-            setSubTasks(res.data);
-        } catch (error) { console.error("Lỗi lấy checklist:", error); }
-    };
-
-    // Hàm thêm mới một đầu việc
-    const handleAddSubTask = async () => {
-        if (!newSubContent.trim() || !selectedTask) return;
-        try {
-            const token = localStorage.getItem('token');
-            await axios.post(`http://localhost:5000/api/subtasks`, 
-                { taskId: selectedTask.id, content: newSubContent },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            setNewSubContent('');
-            fetchSubTasks(selectedTask.id); // Load lại checklist
-            fetchData(); // Load lại task để cập nhật % Progress chính
-        } catch (error) { alert("Lỗi thêm việc"); }
-    };
-
-    // Hàm tích chọn hoàn thành
-    const handleToggleSub = async (subId: number, isDone: boolean) => {
-        try {
-            const token = localStorage.getItem('token');
-            await axios.patch(`http://localhost:5000/api/subtasks/${subId}`, 
-                { isDone: !isDone },
-                { headers: { Authorization: `Bearer ${token}` } }
-            );
-            if(selectedTask) {
-                fetchSubTasks(selectedTask.id);
-                fetchData();
-            }
-        } catch (error) { alert("Lỗi cập nhật"); }
-    };
-    if (isLoading) return <div className="p-10 text-blue-600 font-black animate-pulse">ĐANG TẢI DỮ LIỆU... 🚀</div>;
-    if (!project) return <div className="p-10 text-red-500 font-bold">Lỗi: Không tìm thấy dự án!</div>;
+    if (!project) {
+        return (
+            <div className="p-8 text-center text-slate-500">
+                <p>Không tìm thấy dữ liệu dự án.</p>
+                <Link to="/projects" className="text-blue-600 font-semibold text-xs mt-2 inline-block hover:underline">Quay lại danh sách</Link>
+            </div>
+        );
+    }
 
     return (
-        <div className="flex flex-col h-full bg-white"> 
-            {/* Header Dự án */}
-            <div className="flex items-start gap-6 mb-8 border-b border-gray-100 pb-8 px-2">
-                <Link to="/projects" className="mt-1 flex items-center justify-center bg-white border border-gray-200 hover:bg-gray-50 text-gray-400 w-10 h-10 rounded-xl transition shadow-sm">&larr;</Link>
-                <div className="flex-1">
-                    <div className="flex items-center gap-4">
-                        <h1 className="text-3xl font-black text-gray-900">{project.name}</h1>
-                        <span className="text-[10px] bg-blue-600 text-white px-3 py-1 rounded-full font-black tracking-widest shadow-lg shadow-blue-100 uppercase">{project.key}</span>
-                    </div>
-                    <p className="text-gray-400 text-sm mt-2 font-medium">{project.description}</p>
-                </div>
-                {/* HIỂN THỊ MÃ DỰ ÁN ĐỂ COPY */}
-                <div className="hidden md:block text-right">
-                    <span className="text-[9px] font-black text-gray-300 uppercase tracking-widest block mb-1">Mã tham gia</span>
-                    <code className="bg-gray-50 px-3 py-2 rounded-xl border border-dashed border-gray-200 text-blue-600 font-bold text-xs select-all cursor-pointer" title="Click để copy">
-                        {project.key}
-                    </code>
-                </div>
-                {/* NÚT CHUÔNG THÔNG BÁO DUYỆT THÀNH VIÊN */}
-                <div className="relative">
-                    <button 
-                        onClick={() => setIsPendingOpen(!isPendingOpen)}
-                        className="relative p-3 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition-all active:scale-95 group"
-                    >
-                        {/* Icon Chuông */}
-                        <svg xmlns="http://www.w3.org/2000/svg" className="h-6 w-6 text-slate-500 group-hover:text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V5a2 2 0 10-4 0v.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
-                        </svg>
+        <div className="h-full flex flex-col space-y-6 pb-12 animate-fade-in">
+            {/* Top Navigation */}
+            <div className="flex items-center gap-2 text-xs text-slate-500">
+                <Link to="/projects" className="hover:text-blue-600 transition flex items-center gap-1 font-medium">
+                    <ArrowLeft className="w-3.5 h-3.5" />
+                    <span>Dự án</span>
+                </Link>
+                <span>/</span>
+                <span className="font-semibold text-slate-800">{project.name}</span>
+            </div>
 
-                        {/* Chấm đỏ thông báo số lượng */}
-                        {pendingMembers.length > 0 && (
-                            <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center rounded-full bg-rose-500 text-[10px] font-black text-white ring-4 ring-white animate-bounce">
-                                {pendingMembers.length}
+            {/* Project Header Card */}
+            <div className="bg-white p-6 rounded-2xl border border-slate-200/80 shadow-2xs flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                <div>
+                    <div className="flex items-center gap-3">
+                        <h1 className="text-2xl font-bold text-slate-900 tracking-tight">{project.name}</h1>
+                        {project.key && (
+                            <span className="inline-flex items-center gap-1 text-xs font-extrabold text-blue-600 bg-blue-50 border border-blue-100 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                                <Hash className="w-3.5 h-3.5" />
+                                {project.key}
                             </span>
                         )}
-                    </button>
+                        <span className={`text-[10px] uppercase px-2.5 py-0.5 rounded-md font-extrabold border ${
+                            project.role === 'MENTOR' || project.role === 'OWNER'
+                                ? 'bg-rose-50 text-rose-600 border-rose-200'
+                                : project.role === 'MANAGER'
+                                ? 'bg-amber-50 text-amber-600 border-amber-200'
+                                : 'bg-slate-100 text-slate-600 border-slate-200'
+                        }`}> 
+                            {project.role}
+                        </span>
+                    </div>
+                    <p className="text-xs text-slate-500 mt-1.5 leading-relaxed">{project.description || "Chưa có mô tả dự án."}</p>
+                </div>
 
-                    {/* DROPDOWN DANH SÁCH NGƯỜI XIN VÀO */}
-                    {isPendingOpen && (
-                        <div className="absolute right-0 mt-4 w-80 bg-white rounded-[2rem] shadow-[0_20px_50px_rgba(0,0,0,0.15)] border border-slate-100 z-[110] animate-in fade-in zoom-in-95 duration-200 origin-top-right">
-                            <div className="p-5 border-b border-slate-50 flex justify-between items-center bg-slate-50/50 rounded-t-[2rem]">
-                                <h3 className="text-[11px] font-black text-slate-600 uppercase tracking-widest">Yêu cầu gia nhập</h3>
-                                <span className="text-[10px] font-bold text-blue-500 bg-blue-50 px-2 py-0.5 rounded-lg">{pendingMembers.length} mới</span>
-                            </div>
-
-                            <div className="max-h-80 overflow-y-auto p-4 space-y-3 custom-scrollbar">
-                                {pendingMembers.length > 0 ? (
-                                    pendingMembers.map((m: any) => (
-                                        <div key={m.id} className="flex items-center gap-3 p-3 rounded-2xl hover:bg-slate-50 transition-colors border border-transparent hover:border-slate-100">
-                                            <div className="w-10 h-10 rounded-xl bg-blue-600 flex items-center justify-center text-white font-black text-xs uppercase shrink-0">
-                                                {m.user?.name?.charAt(0) || "U"}
-                                            </div>
-                                            <div className="flex-1 overflow-hidden">
-                                                <p className="text-xs font-black text-slate-800 truncate">{m.user?.name}</p>
-                                                <p className="text-[10px] text-slate-400 truncate">{m.user?.email}</p>
-                                            </div>
-                                            <button 
-                                                onClick={() => handleApprove(m.id)}
-                                                className="bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[9px] font-black transition-all active:scale-90 shadow-md shadow-emerald-100 uppercase"
-                                            >
-                                                Duyệt
-                                            </button>
-                                        </div>
-                                    ))
-                                ) : (
-                                    <div className="py-10 text-center flex flex-col items-center gap-2 opacity-30">
-                                        <svg className="w-8 h-8 text-slate-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 13V6a2 2 0 00-2-2H6a2 2 0 00-2 2v7m16 0v5a2 2 0 01-2 2H6a2 2 0 01-2-2v-5m16 0h-2.586a1 1 0 00-.707.293l-2.414 2.414a1 1 0 01-.707.293h-3.172a1 1 0 01-.707-.293l-2.414-2.414A1 1 0 006.586 13H4" /></svg>
-                                        <p className="text-[10px] font-black uppercase tracking-widest">Không có yêu cầu tham gia</p>
-                                    </div>
-                                )}
-                            </div>
-
-                            <div className="p-4 bg-slate-50/50 rounded-b-[2rem] border-t border-slate-50 text-center">
-                                <button onClick={() => setIsPendingOpen(false)} className="text-[10px] font-black text-slate-400 hover:text-slate-600 uppercase tracking-widest">Đóng</button>
-                            </div>
-                        </div>
+                <div className="flex items-center gap-2 shrink-0">
+                    {isPrivileged && (
+                        <button
+                            onClick={openEditProjectModal}
+                            className="bg-slate-100 hover:bg-slate-200 text-slate-700 px-3.5 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-1.5"
+                        >
+                            <Settings className="w-3.5 h-3.5" />
+                            <span>Cài đặt</span>
+                        </button>
+                    )}
+                    {myRole === 'OWNER' && (
+                        <button
+                            onClick={() => setShowDeleteProjectModal(true)}
+                            className="bg-rose-50 hover:bg-rose-100 text-rose-600 px-3.5 py-2 rounded-xl font-semibold text-xs transition flex items-center gap-1.5 border border-rose-200/60"
+                        >
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Xóa dự án</span>
+                        </button>
                     )}
                 </div>
-
             </div>
 
-            {/* Toolbar */}
-            <div className="flex justify-between items-center mb-6 px-2">
-                <div>
-                    <h2 className="text-xl font-black text-gray-900">Danh sách công việc</h2>
-                    <p className="text-gray-400 text-xs mt-1">Quản lý các thẻ bài trong dự án</p>
+            {/* Pending Approvals Alert Banner */}
+            {isPrivileged && pendingMembers.length > 0 && (
+                <div className="bg-amber-50 border border-amber-200/80 p-4 rounded-2xl flex items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                        <AlertCircle className="w-5 h-5 text-amber-600 shrink-0" />
+                        <div>
+                            <p className="text-xs font-bold text-amber-900">Yêu cầu gia nhập đang chờ duyệt ({pendingMembers.length})</p>
+                            <p className="text-[11px] text-amber-700">Có thành viên mới sử dụng Mã dự án để xin tham gia nhóm</p>
+                        </div>
+                    </div>
+                    <button
+                        onClick={() => setIsPendingOpen(!isPendingOpen)}
+                        className="bg-amber-600 hover:bg-amber-700 text-white px-3.5 py-1.5 rounded-xl font-semibold text-xs transition shadow-2xs"
+                    >
+                        {isPendingOpen ? 'Ẩn danh sách' : 'Xem & Phê duyệt'}
+                    </button>
                 </div>
-                <button onClick={()=> setIsModalOpen(true)} className="bg-blue-600 hover:bg-blue-700 text-white px-6 py-3 rounded-2xl font-black shadow-lg shadow-blue-200 transition active:scale-95 flex items-center gap-2">
-                    <span className="text-lg">+</span> Thêm Task
-                </button>
+            )}
+
+            {/* Pending Members List */}
+            {isPendingOpen && pendingMembers.length > 0 && (
+                <div className="bg-white border border-amber-200 p-4 rounded-2xl shadow-2xs space-y-3">
+                    <h3 className="text-xs font-bold text-slate-800 uppercase tracking-wider">Danh sách chờ xác nhận</h3>
+                    <div className="divide-y divide-slate-100">
+                        {pendingMembers.map((m) => (
+                            <div key={m.id} className="py-2.5 flex items-center justify-between text-xs">
+                                <div>
+                                    <p className="font-bold text-slate-800">{m.userName || m.userEmail}</p>
+                                    <p className="text-slate-400 text-[11px]">{m.userEmail}</p>
+                                </div>
+                                <button
+                                    onClick={() => handleApprove(m.id)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded-lg font-semibold text-[11px] flex items-center gap-1 transition"
+                                >
+                                    <Check className="w-3 h-3" /> Duyệt
+                                </button>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* Main Tabs Header */}
+            <div className="flex items-center justify-between border-b border-slate-200/80 pb-2">
+                <div className="flex gap-2">
+                    <button
+                        onClick={() => setActiveTab('tasks')}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'tasks'
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                        <Clock className="w-4 h-4" />
+                        <span>Danh sách công việc</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === 'tasks' ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                            {tasks.length}
+                        </span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('members')}
+                        className={`px-4 py-2 rounded-xl font-bold text-xs transition-all flex items-center gap-2 ${
+                            activeTab === 'members'
+                                ? 'bg-blue-600 text-white shadow-xs'
+                                : 'text-slate-600 hover:bg-slate-100'
+                        }`}
+                    >
+                        <Users className="w-4 h-4" />
+                        <span>Thành viên</span>
+                        <span className={`px-1.5 py-0.5 rounded-full text-[10px] ${activeTab === 'members' ? 'bg-blue-700 text-white' : 'bg-slate-200 text-slate-700'}`}>
+                            {projectMembersList.length}
+                        </span>
+                    </button>
+                </div>
+
+                {activeTab === 'tasks' && (
+                    <button 
+                        onClick={() => setIsModalOpen(true)} 
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5"
+                    >
+                        <Plus className="w-4 h-4" />
+                        <span>Thêm Task</span>
+                    </button>
+                )}
+
+                {activeTab === 'members' && isPrivileged && (
+                    <button 
+                        onClick={() => setShowAddMemberModal(true)} 
+                        className="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-xl font-semibold text-xs shadow-xs transition active:scale-95 flex items-center gap-1.5"
+                    >
+                        <UserPlus className="w-4 h-4" />
+                        <span>Mời thành viên</span>
+                    </button>
+                )}
             </div>
 
-            {/* Bảng Dữ liệu Modern */}
-            <div className="bg-white rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 overflow-visible mx-2">
-                <table className="w-full text-left border-collapse">
-                    <thead>
-                        <tr className="bg-gray-50/50 border-b border-gray-100 text-gray-400 text-[10px] uppercase tracking-widest">
-                            <th className="p-5 font-black">Công việc</th>
-                            <th className="p-5 font-black text-center">Trạng thái</th>
-                            <th className="p-5 font-black text-center">Ưu tiên</th>
-                            <th className="p-5 font-black text-center">Thời hạn</th>
-                            <th className="p-5 font-black w-40">Tiến độ</th>
-                            <th className="p-5 font-black text-right">Nhân sự</th>
-                            <th className="p-5 font-black text-center">Xóa</th>
-                        </tr>
-                    </thead>
-                </table>
-                <div className="overflow-y-auto max-h-[calc(100vh-420px)] custom-scrollbar">
-                    <table className="w-full text-left border-collapse"> 
-                        <tbody className="divide-y divide-gray-50">
-                            {tasks.map((task) => {
-                                const assignee = allUsers.find(u => u.id === task.assigneeId);
-                                return (
-                                    <tr key={task.id} className="hover:bg-blue-50/20 transition-all group">
-                                        <td className="p-5 cursor-pointer" onClick={() => handleOpenDetail(task)}>
-                                            <p className="text-gray-900 font-bold text-sm group-hover:text-blue-600 transition-colors">{task.title}</p>
-                                            <p className="text-gray-400 text-xs mt-0.5 line-clamp-1 font-normal">{task.description}</p>
-                                        </td>
-                                        <td className="p-5 text-center">
-                                            <span className={`text-[10px] uppercase px-3 py-1 rounded-full font-black border ${getStatusStyle(task.status)}`}>{task.status}</span>
-                                        </td>
-                                        <td className="p-5 text-center">
-                                            <span className={`text-[10px] px-2.5 py-1 rounded-md font-black ${getPriorityStyle(task.priority)}`}>{task.priority}</span>
-                                        </td>
-                                        <td className="p-5 text-center text-[11px] text-gray-500 font-bold">
-                                            {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : "-"}
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex items-center gap-2">
-                                                <div className="flex-1 bg-gray-100 h-1.5 rounded-full overflow-hidden">
-                                                    <div className="bg-blue-500 h-full rounded-full transition-all" style={{ width: `${task.progress}%` }}></div>
-                                                </div>
-                                                <span className="text-[10px] font-black text-gray-300">{task.progress}%</span>
-                                            </div>
-                                        </td>
-                                        <td className="p-5">
-                                            <div className="flex items-center justify-end gap-2.5">
-                                                <span className="text-xs font-bold text-gray-700">
-                                                    {assignee?.name || "Chưa giao"}
-                                                </span>
-
-                                                {/* Bọc trong một div relative để Dropdown định vị đúng */}
-                                                <div className="relative">
-                                                    <button 
-                                                        onClick={(e) => {
-                                                            // CỰC KỲ QUAN TRỌNG: Ngăn không cho sự kiện click lan ra ngoài làm mở Modal chi tiết
-                                                            e.preventDefault();
-                                                            e.stopPropagation();
-                                                            setAssigningTaskId(assigningTaskId === task.id ? null : task.id);
-                                                        }}
-                                                        className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-[10px] font-black uppercase shadow-md border-2 border-white transition-all active:scale-90 ${assignee ? 'bg-blue-600' : 'bg-gray-300 hover:bg-blue-400'}`}
-                                                    >
-                                                        {assignee?.name?.charAt(0) || "?"}
-                                                    </button>
-
-                                                    {/* DROPDOWN CHỌN NHÂN SỰ */}
-                                                    {assigningTaskId === task.id && (
-                                                        <>
-                                                            {/* Lớp phủ tàng hình để click ra ngoài thì đóng dropdown */}
-                                                            <div 
-                                                                className="fixed inset-0 z-[110]" 
-                                                                onClick={(e) => {
-                                                                    e.stopPropagation();
-                                                                    setAssigningTaskId(null);
-                                                                }}
-                                                            ></div>
-
-                                                            <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-[0_10px_40px_rgba(0,0,0,0.1)] border border-slate-100 z-[9999] py-2 animate-in fade-in zoom-in-95 duration-150">
-                                                                <p className="px-4 py-2 text-[9px] font-black text-slate-400 uppercase tracking-widest border-b border-slate-50 mb-1">Giao việc cho:</p>
-                                                                <div className="max-h-48 overflow-y-auto custom-scrollbar">
-                                                                    {projectMembersList.length > 0 ? (
-                                                                        projectMembersList.map(member => (
-                                                                            <button
-                                                                                key={member.id}
-                                                                                onClick={(e) => {
-                                                                                    e.stopPropagation(); // Không mở Modal task
-                                                                                    handleQuickAssign(task.id, member.id);
-                                                                                }}
-                                                                                className="w-full text-left px-4 py-2.5 text-xs font-bold text-slate-700 hover:bg-blue-50 hover:text-blue-600 transition-colors flex items-center gap-3"
-                                                                            >
-                                                                                <div className="w-6 h-6 bg-slate-100 rounded-lg flex items-center justify-center text-[9px] uppercase text-slate-500 font-black">
-                                                                                    {member.name?.charAt(0)}
-                                                                                </div>
-                                                                                <div className="flex flex-col">
-                                                                                    <span>{member.name}</span>
-                                                                                    <span className="text-[9px] font-medium text-slate-400">{member.email}</span>
-                                                                                </div>
-                                                                            </button>
-                                                                        ))
-                                                                    ) : (
-                                                                        <p className="px-4 py-4 text-[10px] text-center text-slate-400 font-bold uppercase">Chưa có thành viên</p>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </>
-                                                    )}
-                                                </div>
-                                            </div>
-                                        </td>
-                                        <td className="p-5 text-center">
-                                            <button onClick={() => handleDeleteTask(task.id)} className="text-gray-200 hover:text-red-500 p-2 hover:bg-red-50 rounded-xl transition-all">
-                                                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" /></svg>
-                                            </button>
+            {/* TAB CONTENT: TASKS */}
+            {activeTab === 'tasks' && (
+                <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 overflow-hidden">
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead>
+                                <tr className="border-b border-slate-100 bg-slate-50/70 text-slate-500 text-[11px] uppercase tracking-wider">
+                                    <th className="p-4 font-bold">Công việc</th>
+                                    <th className="p-4 font-bold text-center">Trạng thái</th>
+                                    <th className="p-4 font-bold text-center">Độ ưu tiên</th>
+                                    <th className="p-4 font-bold text-center">Thời hạn</th>
+                                    <th className="p-4 font-bold">Tiến độ</th>
+                                    <th className="p-4 font-bold text-right">Người thực hiện</th>
+                                    <th className="p-4 font-bold text-center w-12">Thao tác</th>
+                                </tr>
+                            </thead>
+                            
+                            <tbody className="divide-y divide-slate-100 bg-white text-xs">
+                                {tasks.length === 0 ? (
+                                    <tr>
+                                        <td colSpan={7} className="p-8 text-center text-slate-400 font-medium">
+                                            Chưa có công việc nào trong dự án này. Hãy tạo task mới!
                                         </td>
                                     </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
+                                ) : (
+                                    tasks.map((task) => {
+                                        const assignee = allUsers.find(u => u.id === task.assigneeId);
 
-            {/* Modal Tạo Task */}
+                                        return (
+                                            <tr key={task.id} className="hover:bg-slate-50/80 transition-colors group">
+                                                <td className="p-4 cursor-pointer" onClick={() => handleOpenDetail(task)}>
+                                                    <p className="text-slate-900 font-bold text-xs group-hover:text-blue-600 transition-colors">{task.title}</p>
+                                                    <p className="text-slate-400 text-[11px] mt-0.5 line-clamp-1">{task.description}</p>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className={`text-[10px] uppercase px-2.5 py-0.5 rounded-full font-extrabold border ${getStatusStyle(task.status)}`}>
+                                                        {task.status}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    <span className={`text-[10px] px-2.5 py-0.5 rounded-md font-extrabold border ${getPriorityStyle(task.priority)}`}>
+                                                        {task.priority}
+                                                    </span>
+                                                </td>
+                                                <td className="p-4 text-center text-slate-500 font-medium">
+                                                    {task.dueDate ? new Date(task.dueDate).toLocaleDateString('vi-VN') : '--'}
+                                                </td>
+                                                <td className="p-4">
+                                                    <div className="flex items-center gap-2">
+                                                        <div className="w-full bg-slate-100 rounded-full h-1.5 overflow-hidden">
+                                                            <div 
+                                                                className="bg-blue-600 h-1.5 rounded-full transition-all" 
+                                                                style={{ width: `${task.progress}%` }} 
+                                                            />
+                                                        </div>
+                                                        <span className="text-[11px] font-bold text-slate-500 min-w-[28px]">{task.progress}%</span>
+                                                    </div>
+                                                </td>
+                                                <td className="p-4 text-right">
+                                                    {assignee ? (
+                                                        <span className="inline-flex items-center gap-1.5 bg-slate-100 text-slate-700 px-2.5 py-1 rounded-lg font-semibold text-[11px]">
+                                                            <User className="w-3 h-3 text-slate-400" />
+                                                            {assignee.name || assignee.email}
+                                                        </span>
+                                                    ) : (
+                                                        <span className="text-slate-400 italic text-[11px]">Chưa phân công</span>
+                                                    )}
+                                                </td>
+                                                <td className="p-4 text-center">
+                                                    {isPrivileged && (
+                                                        <button 
+                                                            onClick={() => setTaskToDelete(task.id)}
+                                                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                        </button>
+                                                    )}
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            )}
+
+            {/* TAB CONTENT: MEMBERS */}
+            {activeTab === 'members' && (
+                <div className="bg-white rounded-2xl shadow-2xs border border-slate-200/80 p-6 space-y-4">
+                    <h3 className="text-sm font-bold text-slate-900 uppercase tracking-wider">Danh sách thành viên dự án</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {projectMembersList.map((m) => (
+                            <div key={m.id} className="p-4 rounded-xl border border-slate-200/80 bg-slate-50/50 flex items-center justify-between">
+                                <div className="flex items-center gap-3">
+                                    <div className="w-10 h-10 rounded-full bg-blue-100 text-blue-600 font-bold flex items-center justify-center text-xs uppercase">
+                                        {(m.userName || m.userEmail || 'U').charAt(0)}
+                                    </div>
+                                    <div>
+                                        <p className="text-xs font-bold text-slate-900">{m.userName || m.userEmail}</p>
+                                        <p className="text-[11px] text-slate-400">{m.userEmail}</p>
+                                    </div>
+                                </div>
+                                <div className="flex items-center gap-2">
+                                    <span className={`text-[10px] uppercase px-2 py-0.5 rounded-md font-extrabold border ${
+                                        m.role === 'OWNER' ? 'bg-rose-50 text-rose-600 border-rose-200' :
+                                        m.role === 'MANAGER' ? 'bg-amber-50 text-amber-600 border-amber-200' :
+                                        'bg-slate-100 text-slate-600 border-slate-200'
+                                    }`}>
+                                        {m.role}
+                                    </span>
+                                    {isPrivileged && m.role !== 'OWNER' && (
+                                        <button 
+                                            onClick={() => handleRemoveMember(m.id, m.userName || m.userEmail)}
+                                            className="text-slate-400 hover:text-rose-600 p-1 rounded-lg hover:bg-rose-50 transition"
+                                        >
+                                            <Trash2 className="w-3.5 h-3.5" />
+                                        </button>
+                                    )}
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: CREATE TASK */}
             {isModalOpen && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/30 backdrop-blur-sm p-4">
-                    <div className="bg-white p-10 rounded-[2.5rem] shadow-2xl w-full max-w-2xl border border-gray-100">
-                        <h2 className="text-2xl font-black text-gray-900 mb-8">Tạo công việc mới 🚀</h2>
-                        <form onSubmit={handleCreateTask} className="space-y-6">
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-black-400 uppercase tracking-widest">Tiêu đề</label>
-                                <input type="text" required placeholder="Tên công việc..." value={newTaskTitle} onChange={(e)=>setNewTaskTitle(e.target.value)} className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm focus:ring-2 focus:ring-blue-500/20 outline-none" />
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in">
+                        <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
+                            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Tạo công việc mới</h2>
+                            <button onClick={() => setIsModalOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleCreateTask} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Tên công việc <span className="text-rose-500">*</span></label>
+                                <input 
+                                    type="text" required value={newTaskTitle} onChange={(e) => setNewTaskTitle(e.target.value)}
+                                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition"
+                                    placeholder="Nhập tiêu đề task..."
+                                />
                             </div>
-                            <div className="space-y-1.5">
-                                <label className="text-[10px] font-black text-black-400 uppercase tracking-widest">Mô tả chi tiết</label>
-                                <textarea rows={3} placeholder="Mô tả..." value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} className="w-full bg-gray-50 border-none rounded-2xl px-5 py-4 text-sm outline-none resize-none" />
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mô tả</label>
+                                <textarea 
+                                    value={newTaskDesc} onChange={(e) => setNewTaskDesc(e.target.value)} rows={3}
+                                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/20 focus:bg-white transition resize-none"
+                                    placeholder="Mô tả chi tiết nội dung công việc..."
+                                />
                             </div>
-                            {/* KHÔNG ĐỂ CHECKLIST Ở ĐÂY KHI TẠO MỚI */}
-                            <div className="grid grid-cols-2 gap-5">
-                                <select value={newTaskPriority} onChange={(e)=>setNewTaskPriority(e.target.value)} className="w-full bg-gray-50 border-none rounded-2xl px-4 py-4 text-sm font-bold">
-                                    <option value="LOW">Thấp</option><option value="MEDIUM">Trung bình</option><option value="HIGH">Cao</option><option value="URGENT">Khẩn cấp</option>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Mức ưu tiên</label>
+                                    <select 
+                                        value={newTaskPriority} onChange={(e) => setNewTaskPriority(e.target.value)}
+                                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition"
+                                    >
+                                        <option value="LOW">Thấp (LOW)</option>
+                                        <option value="MEDIUM">Trung bình (MEDIUM)</option>
+                                        <option value="HIGH">Cao (HIGH)</option>
+                                    </select>
+                                </div>
+
+                                <div>
+                                    <label className="block text-xs font-semibold text-slate-700 mb-1.5">Thời hạn (Due Date)</label>
+                                    <input 
+                                        type="date" value={newTaskDueDate} onChange={(e) => setNewTaskDueDate(e.target.value)}
+                                        className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition"
+                                    />
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Người thực hiện</label>
+                                <select 
+                                    value={newTaskAssignee} onChange={(e) => setNewTaskAssignee(e.target.value)}
+                                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs text-slate-900 outline-none focus:border-blue-500 focus:bg-white transition"
+                                >
+                                    <option value="">-- Chưa phân công --</option>
+                                    {allUsers.map((u) => (
+                                        <option key={u.id} value={u.id}>{u.name || u.email}</option>
+                                    ))}
                                 </select>
-                                <input type="date" value={newTaskDueDate} onChange={(e)=>setNewTaskDueDate(e.target.value)} className="w-full bg-gray-50 border-none rounded-2xl px-4 py-4 text-sm outline-none" />
                             </div>
-                            {/* ... (Phần chọn người thực hiện) ... */}
-                            <div className="flex gap-4 pt-6">
-                                <button type="button" onClick={()=>setIsModalOpen(false)} className="flex-1 py-4 text-gray-400 font-bold">Hủy</button>
-                                <button type="submit" disabled={isCreating} className="flex-[2] bg-blue-600 text-white py-4 rounded-2xl font-black">{isCreating ? 'Đang xử lý...' : 'Tạo ngay'}</button>
+
+                            <div className="flex gap-2.5 pt-2">
+                                <button type="button" onClick={() => setIsModalOpen(false)} className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-600 py-2.5 rounded-xl font-medium text-xs transition">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isCreating} className="flex-1 bg-blue-600 hover:bg-blue-700 text-white py-2.5 rounded-xl font-medium text-xs transition shadow-xs disabled:opacity-50">
+                                    {isCreating ? 'Đang tạo...' : 'Tạo Task'}
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
             )}
 
-            {/* Modal Xem chi tiết & Thảo luận */}
+            {/* MODAL: TASK DETAIL & COMMENTS */}
             {isDetailOpen && selectedTask && (
-                <div className="fixed inset-0 z-50 flex items-center justify-center bg-gray-900/40 backdrop-blur-sm p-4">
-                    <div className="bg-white rounded-[2rem] shadow-2xl w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col border border-gray-100">
-                        <div className="p-7 border-b border-gray-50 flex justify-between items-center bg-gray-50/30">
-                            <h2 className="text-xl font-black text-gray-900">{selectedTask.title}</h2>
-                            <button onClick={()=>setIsDetailOpen(false)} className="bg-white border w-8 h-8 rounded-full flex items-center justify-center text-gray-400 hover:text-gray-900 shadow-sm transition">✕</button>
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-200/80 rounded-2xl shadow-2xl w-full max-w-2xl max-h-[85vh] flex flex-col overflow-hidden animate-fade-in">
+                        <div className="p-5 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+                            <div>
+                                <span className={`text-[10px] uppercase px-2 py-0.5 rounded-md font-extrabold border ${getStatusStyle(selectedTask.status)}`}>
+                                    {selectedTask.status}
+                                </span>
+                                <h2 className="text-lg font-bold text-slate-900 mt-1">{selectedTask.title}</h2>
+                            </div>
+                            <button onClick={() => setIsDetailOpen(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                                <X className="w-4 h-4" />
+                            </button>
                         </div>
-                        <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
-                            <div className="flex-1 p-8 overflow-y-auto space-y-8 border-r border-gray-50">
-                                <div>
-                                    <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Mô tả chi tiết</label>
-                                    <p className="bg-gray-50 p-6 rounded-2xl text-sm text-gray-600 mt-3 leading-relaxed border border-gray-100">{selectedTask.description}</p>
-                                </div>
-                                <div className="grid grid-cols-2 gap-4">
-                                    <div className="mt-6">
-                                    <div className="flex justify-between items-center mb-3">
-                                        <label className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Việc cần làm</label>
-                                        <span className="text-[10px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded-lg">
-                                            {subTasks.filter(s => s.isDone).length}/{subTasks.length}
-                                        </span>
-                                    </div>
-                                    <div className="space-y-2 max-h-48 overflow-y-auto pr-2">
-                                        {subTasks.map((sub) => (
-                                            <div key={sub.id} className="flex items-center gap-3 p-3 bg-gray-50/50 border border-gray-100 rounded-2xl">
-                                                <input type="checkbox" checked={sub.isDone} disabled={true} className="w-4 h-4 rounded border-gray-300 text-blue-600 cursor-not-allowed opacity-60" />
-                                                <span className={`text-xs font-medium ${sub.isDone ? 'text-gray-300 line-through' : 'text-gray-600'}`}>{sub.content}</span>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                                    <div className="bg-gray-50 p-5 rounded-2xl">
-                                        <span className="text-[9px] block font-black text-gray-400 uppercase mb-1">Tiến độ tổng thể</span>
-                                        <div className="flex items-center gap-2 mt-1">
-                                            <div className="flex-1 bg-gray-200 h-1.5 rounded-full overflow-hidden">
-                                                <div className="bg-blue-600 h-full transition-all duration-500" style={{ width: `${selectedTask.progress}%` }}></div>
-                                            </div>
-                                            <span className="text-xs font-black text-gray-900">{selectedTask.progress}%</span>
-                                        </div>
-                                    </div>
+
+                        <div className="p-6 overflow-y-auto custom-scrollbar flex-1 space-y-6">
+                            {/* Description */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-1">Mô tả công việc</h4>
+                                <p className="text-xs text-slate-700 bg-slate-50 p-3.5 rounded-xl border border-slate-100 leading-relaxed">
+                                    {selectedTask.description || "Không có mô tả."}
+                                </p>
+                            </div>
+
+                            {/* Status Change Buttons */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Đổi trạng thái</h4>
+                                <div className="flex flex-wrap gap-2">
+                                    {['TODO', 'IN_PROGRESS', 'REVIEW', 'DONE'].map((st) => (
+                                        <button
+                                            key={st}
+                                            onClick={() => handleStatusChange(selectedTask.id, st)}
+                                            className={`px-3 py-1.5 rounded-xl text-xs font-bold transition border ${
+                                                selectedTask.status === st
+                                                    ? 'bg-blue-600 text-white border-blue-600 shadow-xs'
+                                                    : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+                                            }`}
+                                        >
+                                            {st}
+                                        </button>
+                                    ))}
                                 </div>
                             </div>
-                            <div className="w-full md:w-[360px] flex flex-col bg-gray-50/50">
-                                <div className="p-5 border-b border-gray-100 bg-white font-black text-[11px] text-gray-400 uppercase tracking-widest">💬 Thảo luận ({comments.length})</div>
-                                <div className="flex-1 p-5 overflow-y-auto space-y-5 custom-scrollbar">
-                                    {comments.map((c) => (
-                                        <div key={c.id} className="flex gap-3">
-                                            <div className="w-8 h-8 bg-blue-600 rounded-xl flex items-center justify-center text-[10px] text-white font-black uppercase shrink-0 shadow-md">{c.user.name?.charAt(0)}</div>
-                                            <div className="flex-1 bg-white border border-gray-100 p-3 rounded-2xl shadow-sm">
-                                                <p className="text-[10px] font-black text-gray-900 mb-1">{c.user.name}</p>
-                                                <p className="text-xs text-gray-600">{c.content}</p>
-                                            </div>
+
+                            {/* Subtasks Checklist */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Subtasks / Danh sách việc nhỏ</h4>
+                                <form onSubmit={handleAddSubTask} className="flex gap-2 mb-3">
+                                    <input 
+                                        type="text" value={newSubContent} onChange={(e) => setNewSubContent(e.target.value)}
+                                        placeholder="Thêm mục nhỏ..."
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2 text-xs outline-none focus:bg-white focus:border-blue-500"
+                                    />
+                                    <button type="submit" className="bg-slate-900 text-white px-3 py-2 rounded-xl text-xs font-semibold hover:bg-slate-800">
+                                        Thêm
+                                    </button>
+                                </form>
+
+                                <div className="space-y-1.5">
+                                    {subTasks.map((sub) => (
+                                        <div key={sub.id} className="flex items-center justify-between p-2.5 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                                            <label className="flex items-center gap-2.5 cursor-pointer flex-1">
+                                                <input 
+                                                    type="checkbox" checked={sub.isDone} 
+                                                    onChange={() => handleToggleSubTask(sub.id, sub.isDone)}
+                                                    className="w-4 h-4 rounded text-blue-600 focus:ring-blue-500"
+                                                />
+                                                <span className={sub.isDone ? 'line-through text-slate-400' : 'text-slate-700 font-medium'}>
+                                                    {sub.content}
+                                                </span>
+                                            </label>
+                                            <button onClick={() => handleDeleteSubTask(sub.id)} className="text-slate-400 hover:text-rose-600 p-1">
+                                                <X className="w-3.5 h-3.5" />
+                                            </button>
                                         </div>
                                     ))}
                                 </div>
-                                <div className="p-5 bg-white border-t border-gray-100 flex gap-2">
-                                    <input type="text" value={commentText} onChange={(e)=>setCommentText(e.target.value)} onKeyDown={(e)=>e.key==='Enter' && handleSendComment()} placeholder="Phản hồi..." className="flex-1 bg-gray-50 border-none rounded-xl px-4 py-3 text-xs focus:ring-1 focus:ring-blue-500 outline-none" />
-                                    <button onClick={handleSendComment} className="bg-blue-600 text-white px-4 rounded-xl font-black text-[10px] uppercase shadow-md shadow-blue-100 transition active:scale-90">Gửi</button>
+                            </div>
+
+                            {/* Comments Section */}
+                            <div>
+                                <h4 className="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2 flex items-center gap-1.5">
+                                    <MessageSquare className="w-3.5 h-3.5" />
+                                    <span>Bình luận ({comments.length})</span>
+                                </h4>
+
+                                <form onSubmit={handleAddComment} className="flex gap-2 mb-4">
+                                    <input 
+                                        type="text" value={commentText} onChange={(e) => setCommentText(e.target.value)}
+                                        placeholder="Nhập ý kiến thảo luận..."
+                                        className="flex-1 bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2 text-xs outline-none focus:bg-white focus:border-blue-500"
+                                    />
+                                    <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded-xl text-xs font-semibold hover:bg-blue-700">
+                                        Gửi
+                                    </button>
+                                </form>
+
+                                <div className="space-y-3">
+                                    {comments.map((c) => (
+                                        <div key={c.id} className="p-3 rounded-xl bg-slate-50 border border-slate-100 text-xs">
+                                            <div className="flex justify-between items-center mb-1">
+                                                <span className="font-bold text-slate-800">{c.userName || c.userEmail}</span>
+                                                <span className="text-[10px] text-slate-400">{new Date(c.createdAt).toLocaleTimeString('vi-VN', { hour: '2-digit', minute: '2-digit' })}</span>
+                                            </div>
+                                            <p className="text-slate-600">{c.content}</p>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
+                        </div>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: ADD MEMBER BY EMAIL */}
+            {showAddMemberModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in">
+                        <div className="flex justify-between items-center pb-4 border-b border-slate-100 mb-5">
+                            <h2 className="text-lg font-bold text-slate-900 tracking-tight">Mời thành viên mới</h2>
+                            <button onClick={() => setShowAddMemberModal(false)} className="text-slate-400 hover:text-slate-600 p-1.5 rounded-lg hover:bg-slate-100">
+                                <X className="w-4 h-4" />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleAddMember} className="space-y-4">
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Email người dùng <span className="text-rose-500">*</span></label>
+                                <input 
+                                    type="email" required value={newMemberEmail} onChange={(e) => setNewMemberEmail(e.target.value)}
+                                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-blue-500 focus:bg-white"
+                                    placeholder="user@example.com"
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-semibold text-slate-700 mb-1.5">Vai trò trong dự án</label>
+                                <select 
+                                    value={newMemberRole} onChange={(e) => setNewMemberRole(e.target.value)}
+                                    className="w-full bg-slate-50/50 border border-slate-200 rounded-xl px-3.5 py-2.5 text-xs outline-none focus:border-blue-500"
+                                >
+                                    <option value="MEMBER">Thành viên (MEMBER)</option>
+                                    <option value="MANAGER">Quản lý (MANAGER)</option>
+                                </select>
+                            </div>
+
+                            <div className="flex gap-2.5 pt-2">
+                                <button type="button" onClick={() => setShowAddMemberModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-medium">
+                                    Hủy
+                                </button>
+                                <button type="submit" disabled={isAddingMember} className="flex-1 bg-blue-600 text-white py-2.5 rounded-xl text-xs font-medium hover:bg-blue-700 disabled:opacity-50">
+                                    {isAddingMember ? 'Đang gửi...' : 'Gửi lời mời'}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            )}
+
+            {/* MODAL: DELETE CONFIRMATION */}
+            {showDeleteProjectModal && (
+                <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/40 backdrop-blur-xs p-4">
+                    <div className="bg-white border border-slate-200/80 p-6 rounded-2xl shadow-2xl w-full max-w-md animate-fade-in text-center">
+                        <div className="w-12 h-12 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto mb-4">
+                            <AlertTriangle className="w-6 h-6" />
+                        </div>
+                        <h2 className="text-lg font-bold text-slate-900 mb-1">Xác nhận xóa dự án</h2>
+                        <p className="text-xs text-slate-500 mb-6">Hành động này sẽ xóa vĩnh viễn dự án và toàn bộ công việc liên quan!</p>
+
+                        <div className="flex gap-2.5">
+                            <button onClick={() => setShowDeleteProjectModal(false)} className="flex-1 bg-slate-100 text-slate-600 py-2.5 rounded-xl text-xs font-medium">
+                                Hủy bỏ
+                            </button>
+                            <button onClick={executeDeleteProject} disabled={isDeletingProject} className="flex-1 bg-rose-600 text-white py-2.5 rounded-xl text-xs font-medium hover:bg-rose-700 disabled:opacity-50">
+                                {isDeletingProject ? 'Đang xóa...' : 'Xóa vĩnh viễn'}
+                            </button>
                         </div>
                     </div>
                 </div>

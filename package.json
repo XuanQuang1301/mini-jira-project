@@ -1,11 +1,35 @@
 {
+  "name": "mini-jira-project",
+  "version": "1.0.0",
+  "description": "Mini-Jira Fullstack Project",
+  "main": "index.js",
+  "packageManager": "npm@10.8.2",
+  "workspaces": [
+    "client",
+    "server",
+    "drizzle"
+  ],
+  "scripts": {
+    "dev": "turbo dev --ui=tui",
+    "server": "npm run dev --prefix server",
+    "client": "npm run dev --prefix client",
+    "drizzle": "npm run dev --prefix drizzle"
+  },
   "dependencies": {
     "drizzle-orm": "^0.45.1",
     "pg": "^8.16.3",
-    "postgres": "^3.4.8"
+    "postgres": "^3.4.8",
+    "react-router-dom": "^7.13.1",
+    "recharts": "^3.8.1"
   },
   "devDependencies": {
     "@types/pg": "^8.16.0",
-    "drizzle-kit": "^0.31.8"
-  }
+    "drizzle-kit": "^0.31.8",
+    "turbo": "^2.10.8"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/XuanQuang1301/mini-jira-project.git"
+  },
+  "license": "ISC"
 }

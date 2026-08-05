@@ -12,12 +12,25 @@ export const getProjects = async (req: any, res: Response) => {
   }
 };
 
+// 1b. Lấy tất cả dự án trong hệ thống dành cho Admin
+export const getAllProjects = async (req: any, res: Response) => {
+  try {
+    const data = await projectService.getAllProjectsService();
+    res.json(data);
+  } catch (error: any) {
+    res.status(500).json({ error: error.message });
+  }
+};
+
 // 2. Tạo dự án mới
 export const createProject = async (req: any, res: any) => {
     try {
-        const { name, key, description, ownerId } = req.body;
+        let { name, key, description, ownerId } = req.body;
         if (!ownerId) {
-            return res.status(400).json({ error: "Thiếu ID người tạo dự án!" });
+            ownerId = req.user?.id || req.user?.userId;
+        }
+        if (!ownerId) {
+            return res.status(400).json({ error: "Thiếu ID người tạo dự án! Vui lòng đăng nhập lại." });
         }
         const cleanOwnerId = Number(ownerId.toString().replace(/,/g, ''));
         if (isNaN(cleanOwnerId)) {
@@ -140,6 +153,35 @@ export const getProjectMembers = async (req: any, res: any) => {
         const { id } = req.params;
         const data = await projectService.getProjectMemberService(Number(id));
         res.status(200).json(data);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const inviteMemberByEmail = async (req: any, res: Response) => {
+    try {
+        const { id } = req.params;
+        const { email } = req.body;
+        
+        if (!email) {
+            return res.status(400).json({ error: "Vui lòng cung cấp email!" });
+        }
+
+        const result = await projectService.inviteMemberByEmailService(Number(id), email);
+        if (result.error) {
+            return res.status(result.status || 400).json({ error: result.error });
+        }
+        res.status(200).json(result);
+    } catch (error: any) {
+        res.status(500).json({ error: error.message });
+    }
+};
+
+export const removeMember = async (req: Request, res: Response) => {
+    try {
+        const { id, memberId } = req.params;
+        await projectService.removeMemberService(Number(id), Number(memberId));
+        res.status(200).json({ message: "Đã xóa thành viên khỏi dự án" });
     } catch (error: any) {
         res.status(500).json({ error: error.message });
     }

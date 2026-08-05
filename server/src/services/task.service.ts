@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { tasks, taskHistory } from "../db/schema"; 
-import { eq, and, or } from "drizzle-orm";
+import { tasks, taskHistory, projectMembers, projects } from "../db/schema"; 
+import { eq, and, or, inArray, ne } from "drizzle-orm";
 
 // 1. Tạo task mới
 export const createTaskService = async (data: any) => {
@@ -23,22 +23,32 @@ export const createTaskService = async (data: any) => {
 export const updateTaskStatusService = async (taskId: number, userId: number, newStatus: string) => {
   return await db.transaction(async (tx) => {
     const oldTask = await tx.select().from(tasks).where(eq(tasks.id, taskId)).limit(1);
+    if (!oldTask || oldTask.length === 0) {
+      return null;
+    }
     const oldStatus = oldTask[0]?.status;
+    const cleanUserId = (!userId || isNaN(userId)) ? (oldTask[0].reporterId || 1) : userId;
+
+    const updateData: any = { 
+      status: newStatus,
+      completedAt: newStatus === "DONE" ? new Date() : null
+    };
+
+    if (newStatus === "DONE") {
+      updateData.progress = 100;
+    }
 
     const [updatedTask] = await tx.update(tasks)
-      .set({ 
-        status: newStatus,
-        progress: newStatus === "DONE" ? 100 : undefined,
-        completedAt: newStatus === "DONE" ? new Date() : null
-      })
+      .set(updateData)
       .where(eq(tasks.id, taskId))
       .returning();
 
     await tx.insert(taskHistory).values({
       taskId,
-      userId,
-      oldStatus: oldStatus,
+      userId: cleanUserId,
+      oldStatus: oldStatus || null,
       newStatus: newStatus,
+      progressAtThatTime: newStatus === "DONE" ? 100 : (oldTask[0].progress || 0)
     });
 
     return updatedTask;
@@ -60,16 +70,39 @@ export const getTaskbyProjectIdService = async (projectId : number) => {
     .where(eq(tasks.projectId, projectId));
 };
 
-// 5. LẤY TASK CỦA TÔI (SỬA LỖI TRỐNG KANBAN)
+// 5. LẤY TASK CỦA TÔI (Bao gồm task được phân công, tạo ra, hoặc thuộc dự án user tham gia)
 export const getMyTasksService = async (userId: number) => {
+    // 1. Lấy danh sách projectId mà user tham gia làm thành viên (trừ PENDING)
+    const userProjects = await db.select({ projectId: projectMembers.projectId })
+        .from(projectMembers)
+        .where(and(
+            eq(projectMembers.userId, userId),
+            ne(projectMembers.role, 'PENDING')
+        ));
+
+    const projectIds = userProjects.map(p => p.projectId);
+
+    // 2. Lấy các dự án do user làm chủ sở hữu (Owner)
+    const ownerProjects = await db.select({ id: projects.id })
+        .from(projects)
+        .where(eq(projects.ownerId, userId));
+
+    ownerProjects.forEach(p => {
+        if (!projectIds.includes(p.id)) projectIds.push(p.id);
+    });
+
+    const conditions = [
+        eq(tasks.assigneeId, userId),
+        eq(tasks.reporterId, userId)
+    ];
+
+    if (projectIds.length > 0) {
+        conditions.push(inArray(tasks.projectId, projectIds));
+    }
+
     return await db.select()
         .from(tasks)
-        .where(
-            or(
-                eq(tasks.assigneeId, userId), // Tôi là người làm
-                eq(tasks.reporterId, userId)  // Hoặc tôi là người giao (để quản lý)
-            )
-        ); 
+        .where(or(...conditions));
 };
 
 // 6. LẤY CHI TIẾT TASK 

@@ -82,12 +82,10 @@ export const getTaskByProject = async (req: any, res: any) => {
     }
 };
 
-// 5. Lấy Task cá nhân (SỬA LỖI TYPO 'useId' -> 'userId')
+// 5. Lấy Task cá nhân 
 export const getMyTasks = async (req: any, res: any) => {
     try {    
         const userId = req.user?.userId || req.user?.id || req.userId;
-        
-        // Gọi đúng tên hàm Service: getMyTasksService
         const myTasks = await getMyTasksService(Number(userId)); 
         return res.status(200).json(myTasks); 
     } catch (error: any) {    
