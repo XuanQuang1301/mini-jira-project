@@ -1,0 +1,20 @@
+{
+  "expo": {
+    "name": "Mini Jira Mobile",
+    "slug": "mini-jira-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "splash": {
+      "resizeMode": "contain",
+      "backgroundColor": "#0f172a"
+    },
+    "ios": {
+      "supportsTablet": true
+    },
+    "android": {
+      "backgroundColor": "#0f172a"
+    }
+  }
+}

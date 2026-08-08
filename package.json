@@ -5,14 +5,15 @@
   "main": "index.js",
   "packageManager": "npm@10.8.2",
   "workspaces": [
-    "client",
-    "server",
+    "apps/*",
     "drizzle"
   ],
   "scripts": {
     "dev": "turbo dev --ui=tui",
-    "server": "npm run dev --prefix server",
-    "client": "npm run dev --prefix client",
+    "web": "npm run dev --prefix apps/web",
+    "client": "npm run dev --prefix apps/web",
+    "server": "npm run dev --prefix apps/server",
+    "mobile": "npm run dev --prefix apps/mobile",
     "drizzle": "npm run dev --prefix drizzle"
   },
   "dependencies": {

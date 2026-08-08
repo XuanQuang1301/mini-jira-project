@@ -57,25 +57,11 @@ Mini Jira Project là giải pháp phần mềm Fullstack được phát triển
 
 ### 3.5. Phân hệ Quản trị Hệ thống (Admin Portal)
 - Trang điều khiển trung tâm giám sát tổng số người dùng, số dự án và tài khoản bị khóa.
-- Trang Quản lý Dự án Hệ thống: Xem toàn bộ dự án trong hệ thống và danh sách công việc thuộc về từng dự án.
-- Trang Quản lý Người dùng: Thực hiện khóa hoặc mở khóa tài khoản người dùng.
-- Trang Cấu hình Hệ thống: Quản lý tham số vận hành và tham số bảo mật.
+- Trang Quản lý Dự án Hệ thống: Xem toàn bộ dự án trong hệ thống và danh sách công việc thuộc về từng dự án.## 5. Cấu hình Biến môi trường (Environment Variables)
 
----
+### 5.1. Cấu hình Backend (`apps/server/.env`)
 
-## 4. Yêu cầu Tiên quyết (Prerequisites)
-
-- **Node.js**: Phiên bản 18.0.0 trở lên.
-- **npm**: Phiên bản 9.0.0 trở lên.
-- **PostgreSQL Database Server**: Đã được cài đặt và vận hành trên môi trường local hoặc cloud.
-
----
-
-## 5. Cấu hình Biến môi trường (Environment Variables)
-
-### 5.1. Cấu hình Backend (`server/.env`)
-
-Tạo file `.env` trong thư mục `server/` với nội dung mẫu sau:
+Tạo file `.env` trong thư mục `apps/server/` với nội dung mẫu sau:
 
 ```env
 PORT=5000
@@ -83,9 +69,9 @@ DATABASE_URL=postgres://username:password@localhost:5432/mini_jira_db
 JWT_SECRET=super_secret_jwt_key_mini_jira_2026
 ```
 
-### 5.2. Cấu hình Frontend (`client/.env`)
+### 5.2. Cấu hình Frontend Web (`apps/web/.env`)
 
-Tạo file `.env` trong thư mục `client/` nếu cần tùy chỉnh URL kết nối API:
+Tạo file `.env` trong thư mục `apps/web/` nếu cần tùy chỉnh URL kết nối API:
 
 ```env
 VITE_API_URL=http://localhost:5000
@@ -104,29 +90,21 @@ cd mini-jira-project
 
 ### Bước 2: Cài đặt Dependencies
 
-Cài đặt gói phụ thuộc cho thư mục gốc, máy chủ backend và ứng dụng frontend:
+Cài đặt gói phụ thuộc cho thư mục gốc Monorepo và các phân hệ `apps/*`:
 
 ```bash
-# Cài đặt tại thư mục gốc (Root)
-npm install
-
-# Cài đặt cho Backend
-cd server
-npm install
-
-# Cài đặt cho Frontend
-cd client
+# Cài đặt toàn bộ tại thư mục gốc (Root)
 npm install
 ```
 
 ### Bước 3: Đồng bộ Cơ sở dữ liệu (Database Migration)
 
-Tại thư mục `server/`, thực hiện đẩy cấu trúc bảng lên PostgreSQL:
+Tại thư mục `apps/server/`, thực hiện đẩy cấu trúc bảng lên PostgreSQL:
 
 ```bash
-cd server
+cd apps/server
 npx drizzle-kit push
-cd ..
+cd ../..
 ```
 
 ### Bước 4: Khởi chạy Ứng dụng
@@ -137,9 +115,10 @@ cd ..
 npm run dev
 ```
 
-Lệnh này sẽ tự động khởi chạy Turborepo Terminal User Interface (TUI) với 3 tab tác vụ riêng biệt:
-- **`web#dev`**: Frontend Vite App tại `http://localhost:5173`
+Lệnh này sẽ tự động khởi chạy Turborepo Terminal User Interface (TUI) với các tab tác vụ riêng biệt:
+- **`web#dev`**: Frontend Web Vite App tại `http://localhost:5173`
 - **`server#dev`**: Backend Express Server tại `http://localhost:5000`
+- **`mobile#dev`**: Mobile Expo App tại `http://localhost:8081`
 - **`drizzle#dev`**: Drizzle Studio (Database GUI) tại `http://localhost:4984` hoặc `https://local.drizzle.studio`
 
 Sử dụng phím **Mũi tên lên / xuống (↑ / ↓)** để chuyển đổi giữa các tab tác vụ.
@@ -148,20 +127,22 @@ Sử dụng phím **Mũi tên lên / xuống (↑ / ↓)** để chuyển đổi
 
 - Khởi chạy Backend Server:
   ```bash
-  cd server
-  npm run dev
+  npm run server
   ```
 
-- Khởi chạy Frontend Client:
+- Khởi chạy Web Client:
   ```bash
-  cd client
-  npm run dev
+  npm run web
+  ```
+
+- Khởi chạy Mobile App:
+  ```bash
+  npm run mobile
   ```
 
 - Mở Giao diện Quản lý CSDL (Drizzle Studio):
   ```bash
-  cd server
-  npm run db:studio
+  npm run drizzle
   ```
 
 ---
@@ -170,35 +151,46 @@ Sử dụng phím **Mũi tên lên / xuống (↑ / ↓)** để chuyển đổi
 
 ```text
 mini-jira-project/
-├── client/                      # Mã nguồn Frontend (React + Vite + TypeScript)
-│   ├── src/
-│   │   ├── components/          # Layout & Reusable UI Components
-│   │   ├── pages/               # Application Pages (Dashboard, Projects, Timeline, Profile)
-│   │   │   └── admin/           # Admin Portal Pages (AdminDashboard, AdminProjects, etc.)
-│   │   ├── services/            # Axios API Integration Layer
-│   │   ├── App.tsx              # Main Router Configuration
-│   │   ├── index.css            # Design System Tokens & Base Styles
-│   │   └── main.tsx             # React Application Entry Point
-│   ├── package.json
-│   └── vite.config.ts
+├── apps/                        # Tất cả các ứng dụng trong Monorepo
+│   ├── web/                     # Mã nguồn Frontend Web (React + Vite + TypeScript)
+│   │   ├── src/
+│   │   │   ├── api/             # Axios API Client Configuration & Interceptors
+│   │   │   ├── assets/          # Hình ảnh & Tài nguyên tĩnh (Static Assets)
+│   │   │   ├── components/      # Layout & UI Components Reusable (Kanban, Roadmap, Modals)
+│   │   │   ├── pages/           # Danh sách Trang (Dashboard, Projects, Timeline, Profile)
+│   │   │   │   └── admin/       # Trang dành cho Quản trị viên (Admin Portal Pages)
+│   │   │   ├── services/        # Tầng gọi API Integration (User, Project, Task Services)
+│   │   │   ├── App.tsx          # Router Configuration & Shell App
+│   │   │   ├── index.css        # Design System Tokens & Base Styling
+│   │   │   └── main.tsx         # React Application Entry Point
+│   │   ├── package.json
+│   │   └── vite.config.ts
+│   │
+│   ├── server/                  # Mã nguồn Backend (Express + Drizzle ORM + PostgreSQL)
+│   │   ├── src/
+│   │   │   ├── controllers/     # Controller xử lý Request (Auth, User, Project, Task, Comment)
+│   │   │   ├── db/              # Kết nối CSDL & Định nghĩa Schema
+│   │   │   │   └── schema/      # Drizzle Schema Definitions (users, projects, tasks, etc.)
+│   │   │   ├── middlewares/     # JWT Auth & Security Middlewares
+│   │   │   ├── routes/          # Khai báo các đường dẫn Express API Routes
+│   │   │   ├── services/        # Tầng xử lý Logic Nghiệp vụ (Business Logic Layer)
+│   │   │   ├── socket/          # Xử lý sự kiện Thời gian thực (Socket.io Realtime)
+│   │   │   ├── utils/           # Helper Functions & Utilities
+│   │   │   └── index.ts         # Backend Express Server Entry Point
+│   │   ├── drizzle.config.ts    # Drizzle ORM Configuration
+│   │   └── package.json
+│   │
+│   └── mobile/                  # Mã nguồn Mobile App (React Native + Expo + TypeScript)
+│       ├── App.tsx              # Giao diện chính Mobile App (Kiểm tra kết nối Backend & Stats)
+│       ├── app.json             # Cấu hình Expo Project Meta
+│       ├── tsconfig.json        # Cấu hình TypeScript kế thừa expo/tsconfig.base.json
+│       └── package.json         # Khai báo Dependencies & Expo Scripts
 │
-├── server/                      # Mã nguồn Backend (Express + Drizzle ORM + PostgreSQL)
-│   ├── src/
-│   │   ├── controllers/         # Request Handlers (Auth, User, Project, Task, Comment)
-│   │   ├── db/                  # Database Connection & Schemas
-│   │   │   └── schema/          # Schema Definitions (users, projects, tasks, etc.)
-│   │   ├── middlewares/         # JWT Authentication & Authorization Middlewares
-│   │   ├── routes/              # Express API Routes Definition
-│   │   ├── services/            # Business Logic Layer
-│   │   └── index.ts             # Express Application Entry Point
-│   ├── drizzle.config.ts        # Drizzle ORM Configuration
+├── drizzle/                     # Workspace Package hỗ trợ Drizzle Studio GUI
 │   └── package.json
 │
-├── drizzle/                     # Workspace Package dành riêng cho Drizzle Studio
-│   └── package.json
-│
-├── turbo.json                   # Cấu hình Turborepo TUI Task Runner
-├── package.json                 # Root Package Configuration & Workspaces Setup
+├── turbo.json                   # Cấu hình Turborepo TUI Multi-App Runner
+├── package.json                 # Monorepo Workspace Root Setup
 └── README.md                    # Tài liệu Hướng dẫn Dự án
 ```
 
