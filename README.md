@@ -1,4 +1,4 @@
-# 🚀 Mini Jira - Hệ Thống Quản Lý Dự Án & Công Việc Agile/Kanban
+# Mini Jira - Hệ Thống Quản Lý Dự Án & Công Việc Agile/Kanban
 
 <p align="center">
   <img src="https://img.shields.io/badge/Node.js-v18+-339933?style=for-the-badge&logo=node.js&logoColor=white" alt="Node.js" />
@@ -17,7 +17,7 @@
 
 ---
 
-## 📑 Mục lục
+## Mục lục
 
 1. [Giới thiệu Tổng quan](#1-gioi-thieu-tong-quan)
 2. [Kiến trúc & Công nghệ (Tech Stack)](#2-kien-truc--cong-nghe-tech-stack)
@@ -36,26 +36,26 @@
 
 **Mini Jira** được thiết kế nhằm mang lại trải nghiệm quản trị công việc chuẩn mực theo phương pháp Agile/Kanban tương tự như Jira và Trello. Hệ thống đồng bộ hóa dữ liệu thời gian thực giữa Web và Mobile, cung cấp các công cụ trực quan hóa tiến độ và báo cáo số liệu phân tích chuyên sâu.
 
-### 🌟 Điểm nổi bật:
-- 🏗️ **Kiến trúc Monorepo Đồng bộ**: Quản lý đồng thời Backend API, Frontend Web, Mobile App và Database GUI qua **Turborepo** & **NPM Workspaces**.
-- 📋 **Bảng Kanban Kéo - Thả mượt mà**: Sử dụng `@hello-pangea/dnd`, cập nhật tức thì trạng thái (`TODO`, `IN_PROGRESS`, `IN_REVIEW`, `DONE`) và vị trí sắp xếp công việc.
-- 📅 **Lộ trình Dự án (Timeline/Roadmap)**: Trực quan hóa tiến độ dự án theo biểu đồ thanh Gantt theo từng ngày/tháng/năm.
-- ✅ **Checklist Đầu việc con (Subtasks)**: Tạo và theo dõi danh sách việc con, tự động đồng bộ tỷ lệ hoàn thành (%) của Task cha.
-- 💬 **Thảo luận & Bình luận (Comments)**: Trao đổi trực tiếp trên từng thẻ công việc kèm định danh người dùng và mốc thời gian.
-- 🔔 **Trung tâm Thông báo In-App**: Tự động thông báo khi được giao việc, mời tham gia dự án hoặc duyệt thành viên.
-- 🛡️ **Cổng Quản trị Chuyên sâu (Admin Portal - `/admin`)**: Bảng điều khiển phân tích số liệu Recharts, quản lý người dùng (Khóa/Mở khóa tài khoản) và giám sát toàn bộ dự án hệ thống.
-- 📱 **Ứng dụng Di động (Mobile App)**: Xây dựng với **React Native & Expo**, theo dõi công việc cá nhân và kiểm tra trạng thái máy chủ mọi lúc mọi nơi.
+### Điểm nổi bật:
+- **Kiến trúc Monorepo Đồng bộ**: Quản lý đồng thời Backend API, Frontend Web, Mobile App và Database GUI qua **Turborepo** & **NPM Workspaces**.
+- **Bảng Kanban Kéo - Thả mượt mà**: Sử dụng `@hello-pangea/dnd`, cập nhật tức thì trạng thái (`TODO`, `IN_PROGRESS`, `IN_REVIEW`, `DONE`) và vị trí sắp xếp công việc.
+- **Lộ trình Dự án (Timeline/Roadmap)**: Trực quan hóa tiến độ dự án theo biểu đồ thanh Gantt theo từng ngày/tháng/năm.
+- **Checklist Đầu việc con (Subtasks)**: Tạo và theo dõi danh sách việc con, tự động đồng bộ tỷ lệ hoàn thành (%) của Task cha.
+- **Thảo luận & Bình luận (Comments)**: Trao đổi trực tiếp trên từng thẻ công việc kèm định danh người dùng và mốc thời gian.
+- **Trung tâm Thông báo In-App**: Tự động thông báo khi được giao việc, mời tham gia dự án hoặc duyệt thành viên.
+- **Cổng Quản trị Chuyên sâu (Admin Portal - `/admin`)**: Bảng điều khiển phân tích số liệu Recharts, quản lý người dùng (Khóa/Mở khóa tài khoản) và giám sát toàn bộ dự án hệ thống.
+- **Ứng dụng Di động (Mobile App)**: Xây dựng với **React Native & Expo**, theo dõi công việc cá nhân và kiểm tra trạng thái máy chủ mọi lúc mọi nơi.
 
 ---
 
 <a id="2-kien-truc--cong-nghe-tech-stack"></a>
 ## 2. Kiến trúc & Công nghệ (Tech Stack)
 
-### 🔹 Monorepo Orchestration
+### Monorepo Orchestration
 - **Workspaces Manager**: NPM Workspaces
 - **Monorepo Build Engine**: Turborepo (`turbo dev --ui=tui`)
 
-### 🔹 Backend API (`apps/server`)
+### Backend API (`apps/server`)
 - **Runtime**: Node.js (v18+)
 - **Framework**: Express.js (v5)
 - **Language**: TypeScript (v5)
@@ -65,7 +65,7 @@
 - **Bảo mật & Xác thực**: JSON Web Token (JWT), Bcrypt password hashing, CORS
 - **Dev Tools**: `tsx`, `nodemon`
 
-### 🔹 Frontend Web (`apps/web`)
+### Frontend Web (`apps/web`)
 - **Core Library**: React.js (v19)
 - **Build Tool**: Vite (v6)
 - **Language**: TypeScript
@@ -76,13 +76,13 @@
 - **Icons**: Lucide React
 - **HTTP Client**: Axios (với Request Interceptor tự động gắn Bearer Token)
 
-### 🔹 Mobile App (`apps/mobile`)
+### Mobile App (`apps/mobile`)
 - **Framework**: React Native (`0.76.6`)
 - **Platform Engine**: Expo SDK 52
 - **Language**: TypeScript
 - **HTTP Client**: Axios
 
-### 🔹 Database Management (`drizzle/`)
+### Database Management (`drizzle/`)
 - **GUI Manager**: Drizzle Studio chạy độc lập tại cổng `http://localhost:4984` (hoặc `https://local.drizzle.studio`)
 
 ---
@@ -105,10 +105,10 @@
 
 ### 3.3. Phân hệ Bảng Công việc Kanban (Kanban Board)
 - **4 Cột Trạng thái Tiêu chuẩn**:
-  - 📝 **TODO**: Công việc cần thực hiện
-  - ⏳ **IN_PROGRESS**: Đang thực hiện
-  - 🔍 **IN_REVIEW**: Chờ đánh giá / kiểm thử
-  - ✅ **DONE**: Đã hoàn thành
+  - **TODO**: Công việc cần thực hiện
+  - **IN_PROGRESS**: Đang thực hiện
+  - **IN_REVIEW**: Chờ đánh giá / kiểm thử
+  - **DONE**: Đã hoàn thành
 - **Kéo - Thả trực quan**: Di chuyển thẻ công việc linh hoạt giữa các cột trạng thái.
 - **Quản lý Thông tin Công việc chi tiết**:
   - Tiêu đề & Mô tả chi tiết.
@@ -328,7 +328,7 @@ cd ../..
 
 ### Bước 4: Khởi chạy Ứng dụng
 
-#### 🔹 Cách 1: Khởi chạy toàn bộ hệ thống bằng Turborepo TUI (Khuyên dùng)
+#### Cách 1: Khởi chạy toàn bộ hệ thống bằng Turborepo TUI (Khuyên dùng)
 
 ```bash
 npm run dev
@@ -338,16 +338,16 @@ Lệnh này sẽ tự động khởi động giao diện **Turborepo Terminal Us
 
 | Phân hệ | Lệnh Task | Địa chỉ Truy cập / Cổng |
 | :--- | :--- | :--- |
-| 🌐 **Frontend Web** | `web#dev` | `http://localhost:5173` |
-| ⚙️ **Backend Server** | `server#dev` | `http://localhost:5000` |
-| 📱 **Mobile App** | `mobile#dev` | `http://localhost:8081` (Expo Bundler) |
-| 🗄️ **Drizzle Studio** | `drizzle#dev` | `http://localhost:4984` (hoặc `https://local.drizzle.studio`) |
+| **Frontend Web** | `web#dev` | `http://localhost:5173` |
+| **Backend Server** | `server#dev` | `http://localhost:5000` |
+| **Mobile App** | `mobile#dev` | `http://localhost:8081` (Expo Bundler) |
+| **Drizzle Studio** | `drizzle#dev` | `http://localhost:4984` (hoặc `https://local.drizzle.studio`) |
 
-*👉 Dùng các phím mũi tên **↑ / ↓** trong Terminal để chuyển đổi xem log giữa các ứng dụng.*
+*Lưu ý: Dùng các phím mũi tên **Up / Down** (hoặc ↑ / ↓) trong Terminal để chuyển đổi xem log giữa các ứng dụng.*
 
 ---
 
-#### 🔹 Cách 2: Khởi chạy riêng lẻ từng phân hệ theo nhu cầu
+#### Cách 2: Khởi chạy riêng lẻ từng phân hệ theo nhu cầu
 
 Nếu muốn mở từng terminal riêng biệt:
 
