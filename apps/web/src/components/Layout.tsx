@@ -6,8 +6,7 @@ import {
     FolderKanban, 
     CheckSquare, 
     CalendarRange, 
-    LogOut,
-    ShieldAlert
+    LogOut
 } from "lucide-react";
 
 interface UserPayload {

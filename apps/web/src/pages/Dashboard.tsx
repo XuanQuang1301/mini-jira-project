@@ -69,7 +69,8 @@ function MiniSparkBar({ value, max, color }: { value: number; max: number; color
 
 function CustomDonutTooltip({ active, payload, total }: any) {
     if (active && payload && payload.length) {
-        const data = payload[0].payload;
+        const data = payload[0]?.payload;
+        if (!data) return null;
         if (data.key === 'empty') {
             return (
                 <div className="bg-slate-900 text-white text-xs px-3 py-1.5 rounded-xl shadow-xl font-medium border border-slate-700">
@@ -96,7 +97,6 @@ function CustomDonutTooltip({ active, payload, total }: any) {
 
 export default function Dashboard() {
     const [totalProjects, setTotalProjects] = useState(0);
-    const [recentProjects, setRecentProjects] = useState<Project[]>([]);
     const [featuredProject, setFeaturedProject] = useState<Project | null>(null);
     const [completedTasks, setCompletedTasks] = useState(0);
     const [inProgressTasks, setInProgressTasks] = useState(0);
@@ -134,7 +134,6 @@ export default function Dashboard() {
 
                 setProfile(userProfile);
                 setTotalProjects(projects.length);
-                setRecentProjects(projects.slice(0, 3));
                 setFeaturedProject(projects[0] || null);
 
                 // Task stats: 3 core categories
@@ -200,7 +199,7 @@ export default function Dashboard() {
     
     // Donut data with all 3 parts (Hoàn thành, Đang làm, Cần làm)
     const donutData = totalTasks > 0 ? [
-        { name: 'Hoàn thành', value: completedTasks, color: '#2563EB', key: 'done' },
+        { name: 'Hoàn thành', value: completedTasks, color: '#10B981', key: 'done' },
         { name: 'Đang làm', value: inProgressTasks, color: '#F59E0B', key: 'in_progress' },
         { name: 'Cần làm', value: todoTasks, color: '#F43F5E', key: 'todo' },
     ].filter(item => item.value > 0) : [
@@ -343,7 +342,7 @@ export default function Dashboard() {
                                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} allowDecimals={false} />
                                 <Tooltip
                                     contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: '12px' }}
-                                    formatter={(value: any, name: string) => [value, name === 'hoàn_thành' ? 'Hoàn thành' : 'Đang làm']}
+                                    formatter={(value: any, name: any) => [value, name === 'hoàn_thành' ? 'Hoàn thành' : 'Đang làm']}
                                 />
                                 <Area type="monotone" dataKey="hoàn_thành" stroke="#2563EB" strokeWidth={2} fill="url(#colorDone)" dot={false} activeDot={{ r: 5, fill: '#2563EB' }} />
                                 <Area type="monotone" dataKey="đang_làm" stroke="#F59E0B" strokeWidth={2} fill="url(#colorInProg)" dot={false} activeDot={{ r: 5, fill: '#F59E0B' }} />
@@ -404,7 +403,7 @@ export default function Dashboard() {
                     {/* 3 Legend Cards with clear labels */}
                     <div className="w-full grid grid-cols-3 gap-2 mt-1">
                         {[
-                            { label: 'Hoàn thành', short: 'Hoàn thành', value: completedTasks, color: 'bg-blue-600', text: 'text-blue-600' },
+                            { label: 'Hoàn thành', short: 'Hoàn thành', value: completedTasks, color: 'bg-emerald-500', text: 'text-emerald-600' },
                             { label: 'Đang làm', short: 'Đang làm', value: inProgressTasks, color: 'bg-amber-500', text: 'text-amber-600' },
                             { label: 'Cần làm', short: 'Cần làm', value: todoTasks, color: 'bg-rose-500', text: 'text-rose-600' },
                         ].map(item => (
@@ -490,7 +489,7 @@ export default function Dashboard() {
                         </div>
                     ) : (
                         <div className="space-y-2.5 flex-1">
-                            {recentTasks.map((task, idx) => {
+                            {recentTasks.map((task) => {
                                 const cfg = STATUS_CONFIG[task.status] || STATUS_CONFIG['TODO'];
                                 const isOverdue = task.dueDate && task.status !== 'DONE' && new Date(task.dueDate) < new Date();
                                 return (
@@ -547,7 +546,7 @@ export default function Dashboard() {
                                     <span className="font-mono text-[10px] bg-white/10 border border-white/20 px-2 py-0.5 rounded text-slate-300">
                                         {featuredProject.key || `PRJ-${featuredProject.id}`}
                                     </span>
-                                    <h3 className="text-base font-bold mt-2 leading-snug line-clamp-2">{featuredProject.name}</h3>
+                                    <h3 className="text-base font-bold mt-2 leading-snug line-clamp-2">{featuredProject.name || "Dự án chưa đặt tên"}</h3>
                                     {featuredProject.description && (
                                         <p className="text-xs text-slate-400 mt-1.5 line-clamp-2">{featuredProject.description}</p>
                                     )}
