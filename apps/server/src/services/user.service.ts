@@ -38,7 +38,8 @@ export const getAllUsersService = async () => {
     name: users.name,
     email: users.email,
     avatarUrl: users.avatarUrl,
-    isLocked: users.isLocked
+    isLocked: users.isLocked,
+    createdAt: users.createdAt
   }).from(users);
 };
 

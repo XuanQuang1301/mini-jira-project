@@ -5,16 +5,17 @@ import NotificationBell from "../../components/NotificationBell";
 import {
   Users, FolderKanban, ArrowRight, UserCheck, UserX,
   Settings, Activity, Search, Shield,
-  TrendingUp, BarChart3, Clock, CheckCircle2
+  BarChart3, CheckCircle2
 } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
-  PieChart, Pie, Cell, Legend
+  PieChart, Pie, Cell
 } from "recharts";
 
 function CustomAdminDonutTooltip({ active, payload }: any) {
   if (active && payload && payload.length) {
-    const data = payload[0].payload;
+    const data = payload[0]?.payload;
+    if (!data) return null;
     return (
       <div className="bg-slate-900/95 text-white text-xs px-3.5 py-2.5 rounded-xl shadow-2xl backdrop-blur-md border border-slate-700/80">
         <div className="flex items-center gap-2 mb-1">
@@ -67,11 +68,11 @@ export default function AdminDashboard() {
     barChartData = Array.from({ length: 12 }, (_, i) => ({ name: monthLabels[i], projects: 0, users: 0 }));
     projects.forEach(p => {
       const d = p.createdAt ? new Date(p.createdAt) : null;
-      if (d && d.getFullYear() === currentYear) barChartData[d.getMonth()].projects += 1;
+      if (d && !isNaN(d.getTime()) && d.getFullYear() === currentYear) barChartData[d.getMonth()].projects += 1;
     });
     users.forEach(u => {
       const d = u.createdAt ? new Date(u.createdAt) : null;
-      if (d && d.getFullYear() === currentYear) barChartData[d.getMonth()].users += 1;
+      if (d && !isNaN(d.getTime()) && d.getFullYear() === currentYear) barChartData[d.getMonth()].users += 1;
     });
   } else if (activeTab === "quarterly") {
     barChartData = [
@@ -82,14 +83,14 @@ export default function AdminDashboard() {
     ];
     projects.forEach(p => {
       const d = p.createdAt ? new Date(p.createdAt) : null;
-      if (d && d.getFullYear() === currentYear) {
+      if (d && !isNaN(d.getTime()) && d.getFullYear() === currentYear) {
         const q = Math.floor(d.getMonth() / 3);
         barChartData[q].projects += 1;
       }
     });
     users.forEach(u => {
       const d = u.createdAt ? new Date(u.createdAt) : null;
-      if (d && d.getFullYear() === currentYear) {
+      if (d && !isNaN(d.getTime()) && d.getFullYear() === currentYear) {
         const q = Math.floor(d.getMonth() / 3);
         barChartData[q].users += 1;
       }
@@ -100,14 +101,14 @@ export default function AdminDashboard() {
     barChartData = years.map(y => ({ name: `${y}`, projects: 0, users: 0 }));
     projects.forEach(p => {
       const d = p.createdAt ? new Date(p.createdAt) : null;
-      if (d) {
+      if (d && !isNaN(d.getTime())) {
         const idx = years.indexOf(d.getFullYear());
         if (idx !== -1) barChartData[idx].projects += 1;
       }
     });
     users.forEach(u => {
       const d = u.createdAt ? new Date(u.createdAt) : null;
-      if (d) {
+      if (d && !isNaN(d.getTime())) {
         const idx = years.indexOf(d.getFullYear());
         if (idx !== -1) barChartData[idx].users += 1;
       }
@@ -172,8 +173,8 @@ export default function AdminDashboard() {
       title: u.name || u.email || "Người dùng mới",
       sub: u.email,
       date: u.createdAt ? new Date(u.createdAt).toLocaleDateString("vi-VN") : "—",
-      tag: u.isLocked ? "Bị khóa" : "Tài khoản mới",
-      tagColor: u.isLocked ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-blue-600 border-blue-200",
+      tag: (u.isLocked || u.locked) ? "Bị khóa" : "Tài khoản mới",
+      tagColor: (u.isLocked || u.locked) ? "bg-rose-50 text-rose-600 border-rose-200" : "bg-blue-50 text-blue-600 border-blue-200",
       icon: <Users className="w-3.5 h-3.5" />,
       iconBg: "bg-blue-100 text-blue-600",
     })),
@@ -283,7 +284,7 @@ export default function AdminDashboard() {
                 <YAxis axisLine={false} tickLine={false} tick={{ fill: '#94A3B8', fontSize: 11 }} allowDecimals={false} />
                 <Tooltip
                   contentStyle={{ borderRadius: '12px', border: '1px solid #E2E8F0', boxShadow: '0 4px 16px rgba(0,0,0,0.06)', fontSize: '12px' }}
-                  formatter={(value: any, name: string) => [value, name === 'projects' ? 'Dự án mới' : 'Người dùng mới']}
+                  formatter={(value: any, name: any) => [value, name === 'projects' ? 'Dự án mới' : 'Người dùng mới']}
                 />
                 <Bar dataKey="projects" fill="#2563EB" radius={[6, 6, 0, 0]} barSize={16} />
                 <Bar dataKey="users" fill="#BFDBFE" radius={[6, 6, 0, 0]} barSize={16} />

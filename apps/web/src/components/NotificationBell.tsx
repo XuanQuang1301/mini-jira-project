@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import api from "../services/api";
-import { Bell, CheckCheck, FolderKanban, CheckSquare, Sparkles, X, ExternalLink } from "lucide-react";
+import { Bell, CheckCheck, FolderKanban, CheckSquare, Sparkles } from "lucide-react";
 
 interface NotificationItem {
   id: number;
